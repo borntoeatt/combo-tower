@@ -2,15 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Grid Defense</title>
 <style>
   html, body {
-    margin: 0; padding: 0; height: 100%;
+    margin: 0; padding: 0;
+    /* fixed body: no iOS rubber-band scrolling under the game */
+    position: fixed; inset: 0; width: 100%; height: 100%;
     background: radial-gradient(ellipse at center, #131a2e 0%, #06080e 100%);
     display: flex; align-items: center; justify-content: center;
     font-family: "Segoe UI", system-ui, sans-serif;
     overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #rotate-hint {
+    display: none;
+    position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    background: rgba(10, 16, 32, 0.92);
+    border: 1px solid rgba(120, 150, 255, 0.35);
+    color: #9ad0ff; padding: 9px 16px; border-radius: 10px;
+    font-size: 14px; white-space: nowrap;
+    pointer-events: none; z-index: 10;
+  }
+  @media (orientation: portrait) and (max-width: 760px) {
+    #rotate-hint { display: block; }
   }
   canvas {
     display: block;
@@ -20,9 +40,10 @@
     touch-action: manipulation; /* no double-tap zoom on game taps */
   }
 </style>
-  <script type="module" crossorigin src="./assets/index-BLu5N5EJ.js"></script>
+  <script type="module" crossorigin src="./assets/index-Bhy6h93C.js"></script>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="rotate-hint">⟳ Rotate your phone for a bigger battlefield</div>
 </body>
 </html>

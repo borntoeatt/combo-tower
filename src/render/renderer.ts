@@ -13,6 +13,8 @@ export interface PointerState {
   x: number;
   y: number;
   hoverBtn: number | null;
+  /** Touch screens build in two taps: first tap parks the ghost here. */
+  pendingCell: { c: number; r: number } | null;
 }
 
 /**
@@ -242,21 +244,40 @@ export class Renderer {
 
   private drawBuildPreview(world: World, pointer: PointerState): void {
     const ctx = this.ctx;
-    if (world.state !== "playing" || !world.buildType || pointer.y >= FIELD_H || world.selected) return;
-    const cell = cellAt(pointer.x, pointer.y);
+    if (world.state !== "playing" || !world.buildType || world.selected) return;
+    const pending = pointer.pendingCell;
+    const cell = pending ??
+      (pointer.y < FIELD_H ? cellAt(pointer.x, pointer.y) : null);
     if (!cell) return;
     const def = TOWER_TYPES[world.buildType];
     const ok = canBuildAt(world, cell.c, cell.r) && world.gold >= def.cost;
     ctx.fillStyle = ok ? "rgba(120,255,150,0.16)" : "rgba(255,90,90,0.16)";
     ctx.fillRect(cell.c * CELL, cell.r * CELL, CELL, CELL);
+    const cx = cell.c * CELL + CELL / 2, cy = cell.r * CELL + CELL / 2;
     if (ok) {
-      const cx = cell.c * CELL + CELL / 2, cy = cell.r * CELL + CELL / 2;
       ctx.strokeStyle = "rgba(255,255,255,0.3)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 6]);
       ctx.lineDashOffset = -world.time * 16;
       ctx.beginPath(); ctx.arc(cx, cy, def.range, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
+    }
+    if (pending) {
+      // ghost tower + confirm prompt for the two-tap touch flow
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = def.color;
+      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      const pulse = 1 + Math.sin(world.time * 6) * 0.08;
+      ctx.save();
+      ctx.translate(cx, cy - 26);
+      ctx.scale(pulse, pulse);
+      ctx.textAlign = "center";
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = ok ? "#7bed9f" : "#ff6b6b";
+      ctx.fillText(ok ? "TAP AGAIN TO BUILD" : "CAN'T BUILD HERE", 0, 0);
+      ctx.restore();
     }
   }
 

@@ -1,7 +1,7 @@
 import { UI_Y, W, H } from "../config/balance";
 import { TOWER_TYPES, TYPE_ORDER, TARGET_MODES } from "../config/towers";
 import type { GameController } from "../game/controller";
-import { buildTower, cellAt, sellTower, towerAt, tryUpgrade } from "../game/economy";
+import { buildTower, canBuildAt, cellAt, sellTower, towerAt, tryUpgrade } from "../game/economy";
 import { sendWave } from "../game/waves";
 import type { World } from "../game/world";
 import type { PointerState } from "../render/renderer";
@@ -12,7 +12,11 @@ import {
 
 /** Wires DOM mouse/keyboard events to game intents. */
 export class InputController {
-  readonly pointer: PointerState = { x: -100, y: -100, hoverBtn: null };
+  readonly pointer: PointerState = { x: -100, y: -100, hoverBtn: null, pendingCell: null };
+
+  /** Coarse pointers (fingers) get a two-tap build confirmation. */
+  private readonly coarse =
+    typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -69,6 +73,7 @@ export class InputController {
         if (idx !== null) {
           w.buildType = TYPE_ORDER[idx] ?? null;
           w.selected = null;
+          this.pointer.pendingCell = null;
           return;
         }
       }
@@ -103,10 +108,24 @@ export class InputController {
     const existing = towerAt(w, cell.c, cell.r);
     if (existing) {
       w.selected = existing === w.selected ? null : existing;
+      this.pointer.pendingCell = null;
       return;
     }
     w.selected = null;
-    if (w.buildType && !buildTower(w, w.buildType, cell.c, cell.r)) {
+    if (!w.buildType) return;
+
+    // fingers can't hover a preview — first tap parks a ghost,
+    // a second tap on the same cell confirms the build
+    if (this.coarse) {
+      const p = this.pointer.pendingCell;
+      if (!p || p.c !== cell.c || p.r !== cell.r) {
+        this.pointer.pendingCell = canBuildAt(w, cell.c, cell.r) ? cell : null;
+        return;
+      }
+      this.pointer.pendingCell = null;
+    }
+
+    if (!buildTower(w, w.buildType, cell.c, cell.r)) {
       const def = TOWER_TYPES[w.buildType];
       if (w.gold < def.cost) w.addText(px, py, "Need " + def.cost + "g", "#ff6b6b");
     }
@@ -125,7 +144,7 @@ export class InputController {
     if (w.state !== "playing") return;
 
     const type = TYPE_ORDER.find(k => TOWER_TYPES[k].key === e.key);
-    if (type) { w.buildType = type; w.selected = null; }
+    if (type) { w.buildType = type; w.selected = null; this.pointer.pendingCell = null; }
     if (e.code === "Space" && !w.waveActive && !w.paused) sendWave(w, true);
     if (e.code === "KeyU" && w.selected) tryUpgrade(w, w.selected);
     if (e.code === "KeyX" && w.selected) sellTower(w, w.selected);
@@ -139,6 +158,6 @@ export class InputController {
     if (e.code === "KeyF") w.gameSpeed = w.gameSpeed === 1 ? 2 : 1;
     if (e.code === "KeyP") w.paused = !w.paused;
     if (e.code === "KeyM") w.muted = !w.muted;
-    if (e.code === "Escape") w.selected = null;
+    if (e.code === "Escape") { w.selected = null; this.pointer.pendingCell = null; }
   }
 }

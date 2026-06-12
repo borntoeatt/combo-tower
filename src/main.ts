@@ -16,15 +16,20 @@ canvas.width = W * dpr;
 canvas.height = H * dpr;
 
 // scale the canvas down to fit small screens (phones); input maps
-// through getBoundingClientRect, so coordinates stay correct
+// through getBoundingClientRect, so coordinates stay correct.
+// visualViewport tracks the area iOS/Android browser chrome leaves us.
 function fitCanvas(): void {
-  const scale = Math.min(1, window.innerWidth / W, window.innerHeight / H);
+  const vv = window.visualViewport;
+  const vw = vv?.width ?? window.innerWidth;
+  const vh = vv?.height ?? window.innerHeight;
+  const scale = Math.min(1, vw / W, vh / H);
   canvas.style.width = Math.round(W * scale) + "px";
   canvas.style.height = Math.round(H * scale) + "px";
 }
 fitCanvas();
 addEventListener("resize", fitCanvas);
 addEventListener("orientationchange", fitCanvas);
+window.visualViewport?.addEventListener("resize", fitCanvas);
 const ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("2D canvas not supported");
 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -39,9 +44,11 @@ const debug = new DebugOverlay();
 
 // console access for debugging — pairs with the ` overlay
 declare global {
-  interface Window { __game?: { world: World; controller: GameController } }
+  interface Window {
+    __game?: { world: World; controller: GameController; input: InputController };
+  }
 }
-window.__game = { world, controller };
+window.__game = { world, controller, input };
 
 controller.startDemo();
 
