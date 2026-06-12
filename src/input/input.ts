@@ -1,4 +1,5 @@
-import { UI_Y, W, H } from "../config/balance";
+import { FIELD_H, UI_Y, W } from "../config/balance";
+import { canvasH, clampCamera, fieldToScreen, makeCamera, screenToField } from "../render/viewport";
 import { TOWER_TYPES, TYPE_ORDER, TARGET_MODES } from "../config/towers";
 import type { GameController } from "../game/controller";
 import { buildTower, canBuildAt, cellAt, sellTower, towerAt, tryUpgrade } from "../game/economy";
@@ -14,11 +15,22 @@ import { BALANCE, DIFFICULTY_ORDER } from "../config/balance";
 
 /** Wires DOM mouse/keyboard events to game intents. */
 export class InputController {
-  readonly pointer: PointerState = { x: -100, y: -100, hoverBtn: null, pendingCell: null };
+  readonly pointer: PointerState = {
+    x: -100, y: -100, hoverBtn: null, pendingCell: null, cam: makeCamera(),
+  };
 
   /** Coarse pointers (fingers) get a two-tap build confirmation. */
   private readonly coarse =
     typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
+
+  /** One-finger gesture bookkeeping: tap vs pan discrimination. */
+  private touch: {
+    mode: "tap" | "pan" | "pinch";
+    x: number; y: number;        // canvas coords of gesture start
+    t: number;
+    dist: number; z0: number;    // pinch baseline
+    wx0: number; wy0: number;    // world point under the pinch midpoint
+  } | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -29,27 +41,111 @@ export class InputController {
   ) {
     canvas.addEventListener("mousemove", e => this.onMove(e));
     canvas.addEventListener("click", e => this.onClick(e));
+    canvas.addEventListener("touchstart", e => this.onTouchStart(e), { passive: false });
+    canvas.addEventListener("touchmove", e => this.onTouchMove(e), { passive: false });
+    canvas.addEventListener("touchend", e => this.onTouchEnd(e), { passive: false });
+    canvas.addEventListener("touchcancel", () => { this.touch = null; });
     addEventListener("keydown", e => this.onKey(e));
   }
 
-  private toCanvas(e: MouseEvent): readonly [number, number] {
+  private clientToCanvas(clientX: number, clientY: number): readonly [number, number] {
     const rect = this.canvas.getBoundingClientRect();
     return [
-      (e.clientX - rect.left) * (W / rect.width),
-      (e.clientY - rect.top) * (H / rect.height),
+      (clientX - rect.left) * (W / rect.width),
+      (clientY - rect.top) * (canvasH() / rect.height),
     ] as const;
   }
 
+  private toCanvas(e: MouseEvent): readonly [number, number] {
+    return this.clientToCanvas(e.clientX, e.clientY);
+  }
+
+  /** Canvas coords → world coords for the field, identity for the UI bar. */
+  private unproject(px: number, py: number): readonly [number, number] {
+    if (py >= FIELD_H) return [px, py] as const;
+    return screenToField(this.pointer.cam, px, py);
+  }
+
   private onMove(e: MouseEvent): void {
-    const [x, y] = this.toCanvas(e);
+    const [sx, sy] = this.toCanvas(e);
+    const [x, y] = this.unproject(sx, sy);
     this.pointer.x = x;
     this.pointer.y = y;
-    this.pointer.hoverBtn = y >= UI_Y ? uiButtonAt(x, y) : null;
+    this.pointer.hoverBtn = sy >= UI_Y ? uiButtonAt(sx, sy) : null;
+  }
+
+  // ---------- touch gestures: tap / pan / pinch ----------
+
+  private onTouchStart(e: TouchEvent): void {
+    e.preventDefault(); // suppress emulated mouse events and page gestures
+    this.onUserGesture();
+    const cam = this.pointer.cam;
+    if (e.touches.length >= 2) {
+      const [a, b] = [e.touches[0]!, e.touches[1]!];
+      const [ax, ay] = this.clientToCanvas(a.clientX, a.clientY);
+      const [bx, by] = this.clientToCanvas(b.clientX, b.clientY);
+      const [wx0, wy0] = screenToField(cam, (ax + bx) / 2, (ay + by) / 2);
+      this.touch = {
+        mode: "pinch", x: (ax + bx) / 2, y: (ay + by) / 2, t: this.now(),
+        dist: Math.max(1, Math.hypot(bx - ax, by - ay)), z0: cam.z, wx0, wy0,
+      };
+      return;
+    }
+    const t0 = e.touches[0]!;
+    const [x, y] = this.clientToCanvas(t0.clientX, t0.clientY);
+    this.touch = { mode: "tap", x, y, t: this.now(), dist: 0, z0: cam.z, wx0: 0, wy0: 0 };
+  }
+
+  private onTouchMove(e: TouchEvent): void {
+    e.preventDefault();
+    const ts = this.touch;
+    if (!ts) return;
+    const cam = this.pointer.cam;
+    if (ts.mode === "pinch" && e.touches.length >= 2) {
+      const [a, b] = [e.touches[0]!, e.touches[1]!];
+      const [ax, ay] = this.clientToCanvas(a.clientX, a.clientY);
+      const [bx, by] = this.clientToCanvas(b.clientX, b.clientY);
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      cam.z = ts.z0 * (Math.hypot(bx - ax, by - ay) / ts.dist);
+      clampCamera(cam);
+      // keep the world point that started under the fingers under them
+      cam.cx = ts.wx0 - (mx - W / 2) / cam.z;
+      cam.cy = ts.wy0 - (my - FIELD_H / 2) / cam.z;
+      clampCamera(cam);
+      return;
+    }
+    const t0 = e.touches[0];
+    if (!t0) return;
+    const [x, y] = this.clientToCanvas(t0.clientX, t0.clientY);
+    if (ts.mode === "tap" && Math.hypot(x - ts.x, y - ts.y) > 14 &&
+        cam.z > 1.001 && ts.y < FIELD_H) {
+      ts.mode = "pan";
+    }
+    if (ts.mode === "pan") {
+      cam.cx -= (x - ts.x) / cam.z;
+      cam.cy -= (y - ts.y) / cam.z;
+      clampCamera(cam);
+      ts.x = x; ts.y = y;
+    }
+  }
+
+  private onTouchEnd(e: TouchEvent): void {
+    e.preventDefault();
+    const ts = this.touch;
+    this.touch = null;
+    if (!ts || ts.mode !== "tap") return;
+    if (this.now() - ts.t > 600) return;
+    this.handleTap(ts.x, ts.y);
   }
 
   private onClick(e: MouseEvent): void {
     this.onUserGesture();
     const [px, py] = this.toCanvas(e);
+    this.handleTap(px, py);
+  }
+
+  /** Shared mouse-click / touch-tap dispatch. Coords are canvas-space. */
+  private handleTap(px: number, py: number): void {
     const w = this.world;
 
     if (w.state === "menu") {
@@ -108,7 +204,8 @@ export class InputController {
 
     // taps on the selected tower's panel act on its rows (touch has no U/X/T)
     if (w.selected) {
-      const panel = selectedPanelRect(w.selected.x, w.selected.y);
+      const [tsx, tsy] = fieldToScreen(this.pointer.cam, w.selected.x, w.selected.y);
+      const panel = selectedPanelRect(tsx, tsy);
       if (inRect(px, py, panel)) {
         const t = w.selected;
         if (inRect(px, py, panelTargetRect(panel))) {
@@ -123,7 +220,8 @@ export class InputController {
       }
     }
 
-    const cell = cellAt(px, py);
+    const [wx, wy] = this.unproject(px, py);
+    const cell = cellAt(wx, wy);
     if (!cell) return;
     const existing = towerAt(w, cell.c, cell.r);
     if (existing) {
@@ -147,7 +245,7 @@ export class InputController {
 
     if (!buildTower(w, w.buildType, cell.c, cell.r)) {
       const def = TOWER_TYPES[w.buildType];
-      if (w.gold < def.cost) w.addText(px, py, "Need " + def.cost + "g", "#ff6b6b");
+      if (w.gold < def.cost) w.addText(wx, wy, "Need " + def.cost + "g", "#ff6b6b");
     }
   }
 

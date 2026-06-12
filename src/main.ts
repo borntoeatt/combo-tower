@@ -1,5 +1,6 @@
 import { AudioEngine } from "./audio/audio";
-import { H, W } from "./config/balance";
+import { W } from "./config/balance";
+import { canvasH, setPortraitLayout } from "./render/viewport";
 import { EventBus } from "./core/eventBus";
 import { Rng } from "./core/rng";
 import { BestScoreRepository, createStore } from "./core/storage";
@@ -13,27 +14,33 @@ import { Renderer } from "./render/renderer";
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 // cap at 2: 3x backing stores burn fill-rate for no visible gain
 const dpr = Math.min(2, window.devicePixelRatio || 1);
-canvas.width = W * dpr;
-canvas.height = H * dpr;
+const ctx = canvas.getContext("2d");
+if (!ctx) throw new Error("2D canvas not supported");
 
-// scale the canvas down to fit small screens (phones); input maps
-// through getBoundingClientRect, so coordinates stay correct.
-// visualViewport tracks the area iOS/Android browser chrome leaves us.
-function fitCanvas(): void {
+// orientation-aware canvas: portrait phones get a taller two-row UI
+// bar; the canvas then scales down to fit the visual viewport (the
+// area browser chrome actually leaves us). Input maps through
+// getBoundingClientRect, so coordinates stay correct at any scale.
+function applyLayout(): void {
   const vv = window.visualViewport;
   const vw = vv?.width ?? window.innerWidth;
   const vh = vv?.height ?? window.innerHeight;
-  const scale = Math.min(1, vw / W, vh / H);
+  setPortraitLayout(vh > vw && vw < 900);
+  const h = canvasH();
+  const bw = W * dpr, bh = h * dpr;
+  if (canvas.width !== bw || canvas.height !== bh) {
+    canvas.width = bw;
+    canvas.height = bh;
+  }
+  ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const scale = Math.min(1, vw / W, vh / h);
   canvas.style.width = Math.round(W * scale) + "px";
-  canvas.style.height = Math.round(H * scale) + "px";
+  canvas.style.height = Math.round(h * scale) + "px";
 }
-fitCanvas();
-addEventListener("resize", fitCanvas);
-addEventListener("orientationchange", fitCanvas);
-window.visualViewport?.addEventListener("resize", fitCanvas);
-const ctx = canvas.getContext("2d");
-if (!ctx) throw new Error("2D canvas not supported");
-ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+applyLayout();
+addEventListener("resize", applyLayout);
+addEventListener("orientationchange", applyLayout);
+window.visualViewport?.addEventListener("resize", applyLayout);
 
 const bus = new EventBus();
 const world = new World(bus, new Rng());

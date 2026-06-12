@@ -15,7 +15,10 @@ import type { TowerTypeId } from "../src/config/towers";
 import { waveComposition } from "../src/game/waves";
 
 const DT = 1 / 60;
-const POINTER: PointerState = { x: -100, y: -100, hoverBtn: null, pendingCell: null };
+const POINTER: PointerState = {
+  x: -100, y: -100, hoverBtn: null, pendingCell: null,
+  cam: { z: 1, cx: 480, cy: 320 },
+};
 
 function makeGame(seed: number) {
   const world = new World(new EventBus(), new Rng(seed));

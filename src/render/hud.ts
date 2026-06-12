@@ -1,4 +1,5 @@
-import { BALANCE, DIFFICULTIES, DIFFICULTY_ORDER, H, UI_Y, W } from "../config/balance";
+import { BALANCE, DIFFICULTIES, DIFFICULTY_ORDER, UI_Y, W } from "../config/balance";
+import { canvasH, fieldToScreen, type Camera } from "./viewport";
 import { TARGET_MODES, TOWER_TYPES, TYPE_ORDER } from "../config/towers";
 import { towerStats, upgradeCost, veteranRank } from "../game/economy";
 import { waveComposition } from "../game/waves";
@@ -10,13 +11,13 @@ import {
 } from "./layout";
 
 export function drawUI(
-  ctx: CanvasRenderingContext2D, world: World, hoverBtn: number | null,
+  ctx: CanvasRenderingContext2D, world: World, hoverBtn: number | null, cam: Camera,
 ): void {
-  const barG = ctx.createLinearGradient(0, UI_Y, 0, H);
+  const barG = ctx.createLinearGradient(0, UI_Y, 0, canvasH());
   barG.addColorStop(0, "#0c1122");
   barG.addColorStop(1, "#070a14");
   ctx.fillStyle = barG;
-  ctx.fillRect(0, UI_Y, W, H - UI_Y);
+  ctx.fillRect(0, UI_Y, W, canvasH() - UI_Y);
   ctx.fillStyle = "rgba(120,150,255,0.3)";
   ctx.fillRect(0, UI_Y, W, 2);
 
@@ -35,7 +36,7 @@ export function drawUI(
   }
   drawWaveControls(ctx, world);
   drawStats(ctx, world);
-  drawSelectedPanel(ctx, world);
+  drawSelectedPanel(ctx, world, cam);
 }
 
 function drawBuildButtons(
@@ -212,12 +213,13 @@ function drawStats(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillText("score " + world.score, STATS_RIGHT_X, UI_Y + 68);
 }
 
-function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World): void {
+function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
   const t = world.selected;
   if (!t) return;
   const s = towerStats(t);
   const def = TOWER_TYPES[t.type];
-  const rect = selectedPanelRect(t.x, t.y);
+  const [tsx, tsy] = fieldToScreen(cam, t.x, t.y);
+  const rect = selectedPanelRect(tsx, tsy);
   const px = rect.x, py = rect.y;
   ctx.fillStyle = "rgba(8,12,26,0.94)";
   roundRect(ctx, px, py, rect.w, rect.h, 8);
@@ -253,7 +255,7 @@ function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World): void {
 
 export function drawMenu(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillStyle = "rgba(4,7,16,0.66)";
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, canvasH());
   ctx.textAlign = "center";
   const breathe = 1 + Math.sin(world.time * 1.6) * 0.02;
   ctx.save();
@@ -314,7 +316,7 @@ export function drawMenu(ctx: CanvasRenderingContext2D, world: World): void {
 
 export function drawGameOver(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillStyle = "rgba(4,7,16,0.84)";
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, canvasH());
   ctx.textAlign = "center";
   ctx.save();
   if (world.won) {

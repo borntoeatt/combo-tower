@@ -1,5 +1,6 @@
 import { actForWave } from "../config/acts";
-import { CELL, FIELD_H, H, W } from "../config/balance";
+import { CELL, FIELD_H, W } from "../config/balance";
+import { canvasH, type Camera } from "./viewport";
 import { pathLength, pointAtDist, WP } from "../config/path";
 import { TOWER_TYPES } from "../config/towers";
 import { canBuildAt, cellAt, towerAt, towerStats } from "../game/economy";
@@ -16,6 +17,8 @@ export interface PointerState {
   hoverBtn: number | null;
   /** Touch screens build in two taps: first tap parks the ghost here. */
   pendingCell: { c: number; r: number } | null;
+  /** Field camera — pinch-zoomable on phones, identity on desktop. */
+  cam: Camera;
 }
 
 /**
@@ -39,12 +42,23 @@ export class Renderer {
     const ctx = this.ctx;
     const act = actForWave(world.wave);
     ctx.save();
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, canvasH());
     if (world.shake > 0) {
       ctx.translate(
         (world.rng.next() - 0.5) * world.shake,
         (world.rng.next() - 0.5) * world.shake,
       );
+    }
+
+    // the field is drawn through the camera; UI/overlays are not
+    const cam = pointer.cam;
+    const zoomed = cam.z > 1.001;
+    ctx.save();
+    if (zoomed) {
+      ctx.beginPath(); ctx.rect(0, 0, W, FIELD_H); ctx.clip();
+      ctx.translate(W / 2, FIELD_H / 2);
+      ctx.scale(cam.z, cam.z);
+      ctx.translate(-cam.cx, -cam.cy);
     }
 
     if (this.bg) ctx.drawImage(this.bg, 0, 0, W, FIELD_H);
@@ -96,6 +110,7 @@ export class Renderer {
 
     if (world.state === "menu") {
       this.drawFloatTexts(world);
+      ctx.restore(); // pop camera
       drawMenu(ctx, world);
       ctx.restore();
       return;
@@ -103,8 +118,9 @@ export class Renderer {
 
     this.drawBuildPreview(world, pointer);
     this.drawFloatTexts(world);
+    ctx.restore(); // pop camera — overlays and UI are screen-space
     this.drawOverlays(world);
-    drawUI(ctx, world, pointer.hoverBtn);
+    drawUI(ctx, world, pointer.hoverBtn, cam);
 
     if (world.paused && world.state === "playing") {
       ctx.fillStyle = "rgba(5,8,18,0.55)";

@@ -1,5 +1,6 @@
 import { UI_Y, W } from "../config/balance";
 import { TYPE_ORDER } from "../config/towers";
+import { isPortraitLayout } from "./viewport";
 
 export interface Rect { x: number; y: number; w: number; h: number; }
 
@@ -8,6 +9,11 @@ export function inRect(px: number, py: number, r: Rect): boolean {
 }
 
 export function uiButtonRect(i: number): Rect {
+  if (isPortraitLayout()) {
+    // two rows of three — bigger targets for thumbs
+    const row = Math.floor(i / 3);
+    return { x: 10 + (i % 3) * 132, y: UI_Y + 8 + row * 68, w: 124, h: 62 };
+  }
   return { x: 10 + i * 106, y: UI_Y + 9, w: 98, h: 66 };
 }
 
@@ -18,18 +24,35 @@ export function uiButtonAt(px: number, py: number): number | null {
   return null;
 }
 
-export function uiSendWaveRect(): Rect { return { x: 654, y: UI_Y + 9, w: 104, h: 66 }; }
-export function uiSpeedRect(): Rect    { return { x: 766, y: UI_Y + 9, w: 44, h: 31 }; }
-export function uiPauseRect(): Rect    { return { x: 766, y: UI_Y + 44, w: 44, h: 31 }; }
+export function uiSendWaveRect(): Rect {
+  if (isPortraitLayout()) return { x: 416, y: UI_Y + 8, w: 140, h: 130 };
+  return { x: 654, y: UI_Y + 9, w: 104, h: 66 };
+}
+export function uiSpeedRect(): Rect {
+  if (isPortraitLayout()) return { x: 566, y: UI_Y + 8, w: 64, h: 62 };
+  return { x: 766, y: UI_Y + 9, w: 44, h: 31 };
+}
+export function uiPauseRect(): Rect {
+  if (isPortraitLayout()) return { x: 566, y: UI_Y + 76, w: 64, h: 62 };
+  return { x: 766, y: UI_Y + 44, w: 44, h: 31 };
+}
 
 /**
  * While a tower is selected, the build buttons make way for big
  * action buttons — the only touch-sized way to upgrade/sell on phones.
  */
 export function uiActionRect(i: number): Rect {
+  if (isPortraitLayout()) {
+    // 2×2 grid in the build-button area
+    const row = Math.floor(i / 2);
+    return { x: 10 + (i % 2) * 200, y: UI_Y + 8 + row * 68, w: 192, h: 62 };
+  }
   return { x: 10 + i * 156, y: UI_Y + 9, w: 146, h: 66 };
 }
-export function uiDeselectRect(): Rect { return { x: 10 + 3 * 156, y: UI_Y + 9, w: 64, h: 66 }; }
+export function uiDeselectRect(): Rect {
+  if (isPortraitLayout()) return { x: 10 + 200, y: UI_Y + 76, w: 192, h: 62 };
+  return { x: 10 + 3 * 156, y: UI_Y + 9, w: 64, h: 66 };
+}
 
 /** Info panel for a selected tower at (tx, ty) — drawn by hud, hit-tested by input. */
 export function selectedPanelRect(tx: number, ty: number): Rect {
