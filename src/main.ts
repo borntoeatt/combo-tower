@@ -51,6 +51,19 @@ declare global {
 }
 window.__game = { world, controller, input };
 
+// installable + offline after first visit (production only — the dev
+// server must never be cached)
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => undefined);
+}
+
+// haptics on phones: a thump when a creep leaks, a pattern on game over
+const vibrate = (pattern: number | number[]): void => {
+  if (!world.isDemo && typeof navigator.vibrate === "function") navigator.vibrate(pattern);
+};
+bus.on("enemyLeaked", ({ boss }) => vibrate(boss ? [60, 40, 60] : 35));
+bus.on("gameOver", () => vibrate([120, 60, 120]));
+
 controller.startDemo();
 
 // ---------- main loop ----------
