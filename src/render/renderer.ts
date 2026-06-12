@@ -8,6 +8,7 @@ import type { World } from "../game/world";
 import { buildBackground, type CanvasFactory } from "./background";
 import { drawGameOver, drawMenu, drawUI } from "./hud";
 import { drawEnemy, drawPortal, drawTower } from "./sprites";
+import { buildTowerSprites, type TowerSprites } from "./towerSprites";
 
 export interface PointerState {
   x: number;
@@ -23,6 +24,7 @@ export interface PointerState {
  */
 export class Renderer {
   private bg: HTMLCanvasElement | null;
+  private sprites: TowerSprites;
 
   constructor(
     private ctx: CanvasRenderingContext2D,
@@ -30,6 +32,7 @@ export class Renderer {
     dpr: number,
   ) {
     this.bg = buildBackground(createCanvas, dpr);
+    this.sprites = buildTowerSprites(createCanvas);
   }
 
   render(world: World, pointer: PointerState): void {
@@ -77,7 +80,7 @@ export class Renderer {
     drawPortal(ctx, world, sx - CELL / 2 + 4, sy, "#7bed9f");
     drawPortal(ctx, world, ex + CELL / 2 - 4, ey, "#ff6b6b");
 
-    for (const t of world.towers) drawTower(ctx, world, t);
+    for (const t of world.towers) drawTower(ctx, world, t, this.sprites);
     this.drawHoverRange(world, pointer);
     for (const e of world.enemies) drawEnemy(ctx, world, e);
 
@@ -139,13 +142,11 @@ export class Renderer {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.big ? 4 : 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = b.color;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.big ? 6.5 : 4, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
+      const sprite = this.sprites.bullet[b.color];
+      if (sprite) {
+        const s = b.big ? 42 : 28;
+        ctx.drawImage(sprite, b.x - s / 2, b.y - s / 2, s, s);
+      }
     }
 
     for (const bm of world.beams) {

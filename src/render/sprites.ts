@@ -4,7 +4,8 @@ import { towerStats, veteranRank } from "../game/economy";
 import { makeParticle } from "../game/effects";
 import type { Enemy, Tower } from "../game/types";
 import type { World } from "../game/world";
-import { pathRoundRect, roundRect, shade } from "./helpers";
+import { shade } from "./helpers";
+import { MUZZLE_X, type TowerSprites } from "./towerSprites";
 
 export function drawPortal(
   ctx: CanvasRenderingContext2D, world: World, x: number, y: number, color: string,
@@ -24,7 +25,9 @@ export function drawPortal(
   ctx.restore();
 }
 
-export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower): void {
+export function drawTower(
+  ctx: CanvasRenderingContext2D, world: World, t: Tower, sprites: TowerSprites,
+): void {
   const def = TOWER_TYPES[t.type];
   const sel = t === world.selected;
   const age = Math.min(1, (world.time - t.born) * 4);
@@ -46,16 +49,7 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
   ctx.translate(t.x, t.y);
   ctx.scale(scl, scl);
 
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.beginPath(); ctx.ellipse(0, 13, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
-  const baseG = ctx.createLinearGradient(-15, -15, 15, 15);
-  baseG.addColorStop(0, "#4a5480");
-  baseG.addColorStop(1, "#272e4d");
-  ctx.fillStyle = baseG;
-  roundRect(ctx, -15, -15, 30, 30, 7);
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1;
-  ctx.beginPath(); pathRoundRect(ctx, -15, -15, 30, 30, 7); ctx.stroke();
+  if (sprites.plate) ctx.drawImage(sprites.plate, -32, -32, 64, 64);
 
   // idle specialty effects
   if (t.type === "frost") {
@@ -88,27 +82,18 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
   ctx.save();
   ctx.rotate(t.angle);
   ctx.translate(-rec, 0);
-  ctx.shadowColor = def.glow;
-  ctx.shadowBlur = sel || t.flash > 0 ? 14 : 7;
-  ctx.fillStyle = def.color;
-  const muzzleX = drawTurret(ctx, t.type, def.color);
+  const barrelSprite = sprites.barrel[t.type];
+  if (barrelSprite) ctx.drawImage(barrelSprite, -32, -24, 96, 48);
   if (t.flash > 0.45) {
     ctx.globalAlpha = (t.flash - 0.45) * 1.8;
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(muzzleX, 0, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(MUZZLE_X[t.type], 0, 5.5, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
   ctx.restore();
 
-  ctx.shadowColor = def.glow;
-  ctx.shadowBlur = 8;
-  const domeG = ctx.createRadialGradient(-3, -3, 1, 0, 0, 9);
-  domeG.addColorStop(0, "#ffffff");
-  domeG.addColorStop(0.25, def.color);
-  domeG.addColorStop(1, shade(def.color, -40));
-  ctx.fillStyle = domeG;
-  ctx.beginPath(); ctx.arc(0, 0, 8.5, 0, Math.PI * 2); ctx.fill();
-  ctx.shadowBlur = 0;
+  const domeSprite = sprites.dome[t.type];
+  if (domeSprite) ctx.drawImage(domeSprite, -16, -16, 32, 32);
 
   for (let i = 0; i < t.level; i++) {
     ctx.fillStyle = i === 3 ? "#ff6b9d" : "#ffd700";
@@ -124,54 +109,6 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
     ctx.fillText("★".repeat(rank), 0, -19);
   }
   ctx.restore();
-}
-
-/**
- * Type-specific turret silhouette, drawn in barrel space (pointing +x).
- * Returns the muzzle x offset so the flash lands on the right spot.
- */
-function drawTurret(ctx: CanvasRenderingContext2D, type: Tower["type"], color: string): number {
-  switch (type) {
-    case "gunner": // twin rapid-fire barrels
-      roundRect(ctx, -4, -6.5, 20, 5, 2);
-      roundRect(ctx, -4, 1.5, 20, 5, 2);
-      return 18;
-    case "cannon": { // fat mortar tube with a muzzle band
-      roundRect(ctx, -5, -6.5, 22, 13, 5);
-      ctx.fillStyle = shade(color, -55);
-      ctx.fillRect(12, -7, 4, 14);
-      return 19;
-    }
-    case "frost": { // crystal spike
-      ctx.beginPath();
-      ctx.moveTo(-3, -7); ctx.lineTo(20, 0); ctx.lineTo(-3, 7);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.beginPath();
-      ctx.moveTo(2, -2.5); ctx.lineTo(14, 0); ctx.lineTo(2, 2.5);
-      ctx.closePath(); ctx.fill();
-      return 20;
-    }
-    case "venom": { // injector tube ending in a toxin orb
-      roundRect(ctx, -4, -3.5, 15, 7, 3);
-      ctx.beginPath(); ctx.arc(15, 0, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.4)";
-      ctx.beginPath(); ctx.arc(13.5, -2, 2, 0, Math.PI * 2); ctx.fill();
-      return 21;
-    }
-    case "tesla": { // coil rod with discs and a tip sphere
-      roundRect(ctx, -4, -2.5, 19, 5, 2);
-      ctx.fillRect(5, -7, 3, 14);
-      ctx.fillRect(10, -5.5, 3, 11);
-      ctx.beginPath(); ctx.arc(17, 0, 3.5, 0, Math.PI * 2); ctx.fill();
-      return 19;
-    }
-    case "sniper": // long rail with scope and muzzle brake
-      roundRect(ctx, -6, -2.5, 30, 5, 2);
-      ctx.fillRect(21, -4.5, 3, 9);
-      ctx.beginPath(); ctx.arc(3, -5, 2.5, 0, Math.PI * 2); ctx.fill();
-      return 26;
-  }
 }
 
 export function drawEnemy(ctx: CanvasRenderingContext2D, world: World, e: Enemy): void {

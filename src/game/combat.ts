@@ -6,35 +6,79 @@ import { burst, deathPop, explode } from "./effects";
 import type { Enemy, EnemySpec, Tower, TowerStats } from "./types";
 import type { World } from "./world";
 
-export function pickTarget(world: World, t: Tower, s: TowerStats): Enemy | null {
+/**
+ * Coarse spatial hash so target acquisition is O(enemies in range)
+ * instead of O(all enemies) per tower per frame. Rebuilt each frame —
+ * cheap, and enemies don't move during the tower step.
+ */
+const GRID = 80;
+export class EnemyIndex {
+  private cells = new Map<number, Enemy[]>();
+
+  constructor(enemies: ReadonlyArray<Enemy>) {
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      const key = this.key(Math.floor(e.x / GRID), Math.floor(e.y / GRID));
+      const cell = this.cells.get(key);
+      if (cell) cell.push(e);
+      else this.cells.set(key, [e]);
+    }
+  }
+
+  private key(cx: number, cy: number): number {
+    return (cx + 128) * 4096 + (cy + 128);
+  }
+
+  /** Visit live enemies whose cell intersects the circle's bbox. */
+  forEachNear(x: number, y: number, r: number, visit: (e: Enemy) => void): void {
+    const x0 = Math.floor((x - r) / GRID), x1 = Math.floor((x + r) / GRID);
+    const y0 = Math.floor((y - r) / GRID), y1 = Math.floor((y + r) / GRID);
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cy = y0; cy <= y1; cy++) {
+        const cell = this.cells.get(this.key(cx, cy));
+        if (!cell) continue;
+        for (const e of cell) visit(e);
+      }
+    }
+  }
+}
+
+export function pickTarget(
+  world: World, t: Tower, s: TowerStats, index?: EnemyIndex,
+): Enemy | null {
   let target: Enemy | null = null;
   let bestVal = -Infinity;
   const mode = TARGET_MODES[t.mode] ?? "first";
-  for (const e of world.enemies) {
-    if (e.hp <= 0) continue;
+  const consider = (e: Enemy): void => {
+    if (e.hp <= 0) return;
     const dx = e.x - t.x, dy = e.y - t.y;
     const d2 = dx * dx + dy * dy;
-    if (d2 > s.range * s.range) continue;
+    if (d2 > s.range * s.range) return;
     const val =
       mode === "first" ? e.dist :
       mode === "strong" ? e.hp :
       mode === "weak" ? -e.hp : -d2;
     if (val > bestVal) { bestVal = val; target = e; }
-  }
+  };
+  if (index) index.forEachNear(t.x, t.y, s.range, consider);
+  else for (const e of world.enemies) consider(e);
   return target;
 }
 
 export function nearestEnemy(
   world: World, x: number, y: number, range: number, exclude: ReadonlySet<Enemy>,
+  index?: EnemyIndex,
 ): Enemy | null {
   let bestE: Enemy | null = null;
   let bestD = range * range;
-  for (const e of world.enemies) {
-    if (e.hp <= 0 || exclude.has(e)) continue;
+  const consider = (e: Enemy): void => {
+    if (e.hp <= 0 || exclude.has(e)) return;
     const dx = e.x - x, dy = e.y - y;
     const d = dx * dx + dy * dy;
     if (d < bestD) { bestD = d; bestE = e; }
-  }
+  };
+  if (index) index.forEachNear(x, y, range, consider);
+  else for (const e of world.enemies) consider(e);
   return bestE;
 }
 
@@ -57,13 +101,14 @@ export function damage(
 
 /** Tower acquisition + firing. */
 export function stepTowers(world: World, dt: number): void {
+  const index = new EnemyIndex(world.enemies);
   for (const t of world.towers) {
     t.cooldown -= dt;
     t.recoil = Math.max(0, t.recoil - dt * 5);
     t.flash = Math.max(0, t.flash - dt * 8);
     if (t.cooldown > 0) continue;
     const s = towerStats(t);
-    const target = pickTarget(world, t, s);
+    const target = pickTarget(world, t, s, index);
     if (!target) continue;
     t.cooldown = 1 / s.rate;
     t.angle = Math.atan2(target.y - t.y, target.x - t.x);
@@ -93,7 +138,7 @@ export function stepTowers(world: World, dt: number): void {
         hitSet.add(cur);
         px = cur.x; py = cur.y;
         dmgLeft *= 0.7;
-        cur = nearestEnemy(world, px, py, s.chainRange, hitSet);
+        cur = nearestEnemy(world, px, py, s.chainRange, hitSet, index);
       }
       world.bus.emit("sfx", "zap");
     } else {
