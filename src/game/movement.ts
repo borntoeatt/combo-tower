@@ -44,23 +44,36 @@ export function stepEnemies(world: World, dt: number): void {
     }
     e.slowT = Math.max(0, e.slowT - dt);
 
-    let remaining = e.speed * slowFactor * dt;
-    while (remaining > 0 && e.wpIndex < WP.length - 1) {
-      const [tx, ty] = WP[e.wpIndex + 1]!;
-      const dx = tx - e.x, dy = ty - e.y;
-      const d = Math.hypot(dx, dy);
-      if (d <= remaining) {
-        e.x = tx; e.y = ty; e.wpIndex++;
-        remaining -= d; e.dist += d;
-      } else {
-        e.x += (dx / d) * remaining;
-        e.y += (dy / d) * remaining;
-        e.dist += remaining;
-        remaining = 0;
+    let leakedNow = false;
+    if (e.flies) {
+      // wasps cut straight across from spawn portal to exit portal
+      const [sx, sy] = WP[0]!;
+      const flightLen = Math.hypot(endX - sx, endY - sy);
+      e.dist += e.speed * slowFactor * dt;
+      const f = Math.min(1, e.dist / flightLen);
+      e.x = sx + (endX - sx) * f;
+      e.y = sy + (endY - sy) * f + Math.sin(e.wob * 1.5) * 8; // lazy weave
+      leakedNow = e.dist >= flightLen;
+    } else {
+      let remaining = e.speed * slowFactor * dt;
+      while (remaining > 0 && e.wpIndex < WP.length - 1) {
+        const [tx, ty] = WP[e.wpIndex + 1]!;
+        const dx = tx - e.x, dy = ty - e.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= remaining) {
+          e.x = tx; e.y = ty; e.wpIndex++;
+          remaining -= d; e.dist += d;
+        } else {
+          e.x += (dx / d) * remaining;
+          e.y += (dy / d) * remaining;
+          e.dist += remaining;
+          remaining = 0;
+        }
       }
+      leakedNow = e.wpIndex >= WP.length - 1;
     }
 
-    if (e.wpIndex >= WP.length - 1 && e.hp > 0) {
+    if (leakedNow && e.hp > 0) {
       e.hp = 0;
       e.leaked = true;
       world.waveLeaks++;

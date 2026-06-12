@@ -6,9 +6,11 @@ import { sendWave } from "../game/waves";
 import type { World } from "../game/world";
 import type { PointerState } from "../render/renderer";
 import {
-  inRect, panelSellRect, panelTargetRect, panelUpgradeRect, selectedPanelRect,
-  uiActionRect, uiButtonAt, uiDeselectRect, uiPauseRect, uiSendWaveRect, uiSpeedRect,
+  inRect, menuDiffRect, panelSellRect, panelTargetRect, panelUpgradeRect,
+  selectedPanelRect, uiActionRect, uiButtonAt, uiDeselectRect, uiPauseRect,
+  uiSendWaveRect, uiSpeedRect,
 } from "../render/layout";
+import { BALANCE, DIFFICULTY_ORDER } from "../config/balance";
 
 /** Wires DOM mouse/keyboard events to game intents. */
 export class InputController {
@@ -50,7 +52,16 @@ export class InputController {
     const [px, py] = this.toCanvas(e);
     const w = this.world;
 
-    if (w.state === "menu") { this.controller.startGame(); return; }
+    if (w.state === "menu") {
+      for (let i = 0; i < DIFFICULTY_ORDER.length; i++) {
+        if (inRect(px, py, menuDiffRect(i))) {
+          w.difficulty = DIFFICULTY_ORDER[i]!;
+          return;
+        }
+      }
+      this.controller.startGame();
+      return;
+    }
     if (w.state === "gameover") {
       if (this.now() - w.gameOverAt > 800) this.controller.startGame();
       return;
@@ -60,7 +71,16 @@ export class InputController {
       if (w.selected) {
         // bar shows big tower actions while something is selected
         const t = w.selected;
-        if (inRect(px, py, uiActionRect(0))) { tryUpgrade(w, t); return; }
+        if (inRect(px, py, uiActionRect(0))) {
+          // the final level splits slot 0 into two spec halves
+          if (t.level === BALANCE.maxTowerLevel - 1) {
+            const base = uiActionRect(0);
+            tryUpgrade(w, t, px < base.x + base.w / 2 ? 0 : 1);
+          } else {
+            tryUpgrade(w, t);
+          }
+          return;
+        }
         if (inRect(px, py, uiActionRect(1))) { sellTower(w, t); return; }
         if (inRect(px, py, uiActionRect(2))) {
           t.mode = (t.mode + 1) % TARGET_MODES.length;
@@ -146,7 +166,8 @@ export class InputController {
     const type = TYPE_ORDER.find(k => TOWER_TYPES[k].key === e.key);
     if (type) { w.buildType = type; w.selected = null; this.pointer.pendingCell = null; }
     if (e.code === "Space" && !w.waveActive && !w.paused) sendWave(w, true);
-    if (e.code === "KeyU" && w.selected) tryUpgrade(w, w.selected);
+    if (e.code === "KeyU" && w.selected) tryUpgrade(w, w.selected, 0);
+    if (e.code === "KeyI" && w.selected) tryUpgrade(w, w.selected, 1);
     if (e.code === "KeyX" && w.selected) sellTower(w, w.selected);
     if (e.code === "KeyT" && w.selected) {
       w.selected.mode = (w.selected.mode + 1) % TARGET_MODES.length;

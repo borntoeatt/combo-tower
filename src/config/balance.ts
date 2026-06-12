@@ -8,8 +8,6 @@ export const FIELD_H = ROWS * CELL;
 export const UI_Y = FIELD_H;
 
 export const BALANCE = {
-  startingGold: 130,
-  startingLives: 20,
   demoStartingGold: 220,
   demoGoldTrickle: 14,          // gold/sec the attract-mode AI receives
   maxTowerLevel: 4,
@@ -43,4 +41,22 @@ export const BALANCE = {
   veteranDmgPerRank: 0.1,
   perfectBonusBase: 10,         // extra gold for clearing a wave with zero leaks
   perfectBonusPerWave: 2,
+  victoryWave: 25,              // clearing this wave = victory; play continues endless
 } as const;
+
+export type Difficulty = "easy" | "normal" | "hard";
+
+export interface DifficultyDef {
+  readonly label: string;
+  readonly lives: number;
+  readonly gold: number;
+  readonly hpGrowth: number;
+}
+
+export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
+  easy:   { label: "EASY",   lives: 30, gold: 160, hpGrowth: 1.16 },
+  normal: { label: "NORMAL", lives: 20, gold: 130, hpGrowth: 1.19 },
+  hard:   { label: "HARD",   lives: 12, gold: 110, hpGrowth: 1.22 },
+};
+
+export const DIFFICULTY_ORDER: ReadonlyArray<Difficulty> = ["easy", "normal", "hard"];

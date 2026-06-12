@@ -119,8 +119,20 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, world: World, e: Enemy)
 
   ctx.save();
   ctx.translate(e.x, e.y);
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.beginPath(); ctx.ellipse(0, e.r * 0.85, e.r * 0.9, e.r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  if (d.flies) {
+    // hovering: shadow cast well below, flapping wings
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath(); ctx.ellipse(0, e.r * 2.2, e.r * 0.8, e.r * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+    const flap = Math.sin(e.wob * 5) * 0.5;
+    ctx.fillStyle = "rgba(255,240,200,0.5)";
+    ctx.beginPath();
+    ctx.moveTo(-e.r * 0.4, 0); ctx.lineTo(-e.r - 8, -5 - flap * 7); ctx.lineTo(-e.r * 0.4, 4);
+    ctx.moveTo(e.r * 0.4, 0); ctx.lineTo(e.r + 8, -5 - flap * 7); ctx.lineTo(e.r * 0.4, 4);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath(); ctx.ellipse(0, e.r * 0.85, e.r * 0.9, e.r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  }
 
   if (e.boss) {
     // menacing ground ring

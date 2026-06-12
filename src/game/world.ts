@@ -1,6 +1,6 @@
 import { EventBus } from "../core/eventBus";
 import { Rng } from "../core/rng";
-import { BALANCE, FIELD_H, W } from "../config/balance";
+import { DIFFICULTIES, FIELD_H, W, type Difficulty } from "../config/balance";
 import type {
   Banner, Beam, Bullet, Ember, Enemy, EnemySpec, FloatText,
   GameState, Particle, Ring, Smoke, Tower,
@@ -19,6 +19,8 @@ export class World {
 
   state: GameState = "menu";
   isDemo = true;
+  difficulty: Difficulty = "normal";
+  won = false;   // cleared the victory wave; play continues endless
 
   towers: Tower[] = [];
   enemies: Enemy[] = [];
@@ -69,8 +71,10 @@ export class World {
   reset(): void {
     this.towers = []; this.enemies = []; this.bullets = []; this.beams = [];
     this.rings = []; this.particles = []; this.smokes = []; this.floatTexts = [];
-    this.gold = BALANCE.startingGold;
-    this.lives = BALANCE.startingLives;
+    const diff = DIFFICULTIES[this.difficulty];
+    this.gold = diff.gold;
+    this.lives = diff.lives;
+    this.won = false;
     this.wave = 0; this.score = 0; this.kills = 0;
     this.waveQueue = []; this.spawnTimer = 0; this.waveActive = false;
     this.interTimer = 4;

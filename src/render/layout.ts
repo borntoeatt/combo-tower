@@ -42,3 +42,8 @@ export function panelUpgradeRect(p: Rect): Rect { return { x: p.x, y: p.y + 54, 
 export function panelSellRect(p: Rect): Rect    { return { x: p.x, y: p.y + 69, w: p.w, h: 17 }; }
 
 export const STATS_RIGHT_X = W - 14;
+
+/** Difficulty selector buttons on the menu. */
+export function menuDiffRect(i: number): Rect {
+  return { x: W / 2 - 178 + i * 124, y: 598, w: 108, h: 38 };
+}

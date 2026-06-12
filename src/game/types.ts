@@ -11,6 +11,7 @@ export interface EnemySpec {
   regen: number;
   splits: number;
   boss: boolean;
+  flies: boolean;
 }
 
 export interface Enemy extends EnemySpec {
@@ -42,6 +43,8 @@ export interface Tower {
   flash: number;
   born: number;
   kills: number;      // lifetime kill credit — drives veteran ranks
+  dmgDealt: number;   // lifetime damage — game-over MVP stats
+  spec: number | null; // chosen max-level specialization (index into specs)
 }
 
 /** Effective (level-scaled) combat stats for a tower. */

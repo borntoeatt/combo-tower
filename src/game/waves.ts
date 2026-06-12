@@ -1,4 +1,4 @@
-import { BALANCE, W } from "../config/balance";
+import { BALANCE, DIFFICULTIES, W } from "../config/balance";
 import { ENEMY_TYPES, type EnemyTypeId } from "../config/enemies";
 import type { EnemySpec } from "./types";
 import type { World } from "./world";
@@ -18,12 +18,14 @@ export function waveComposition(n: number): EnemyTypeId[] {
     if (n >= 7) push("regen", 1 + Math.floor(n / 5));
     if (n >= 9) push("splitter", 1 + Math.floor(n / 6));
     if (n >= 11) push("healer", 1 + Math.floor(n / 9));
+    if (n >= 13) push("wasp", 2 + Math.floor(n / 6));
   }
   return comp;
 }
 
 export function buildWave(world: World, n: number): EnemySpec[] {
-  const baseHp = BALANCE.baseHp * Math.pow(BALANCE.hpGrowth, n - 1);
+  const hpGrowth = DIFFICULTIES[world.difficulty].hpGrowth;
+  const baseHp = BALANCE.baseHp * Math.pow(hpGrowth, n - 1);
   const baseSpeed = Math.min(BALANCE.maxSpeed, BALANCE.baseSpeed + n * BALANCE.speedPerWave);
   const baseReward = BALANCE.baseReward + n * BALANCE.rewardPerWave;
   const specs = waveComposition(n).map((type): EnemySpec => {
@@ -38,6 +40,7 @@ export function buildWave(world: World, n: number): EnemySpec[] {
       regen: d.regen ?? 0,
       splits: d.splits ?? 0,
       boss: type === "boss",
+      flies: d.flies ?? false,
     };
   });
   return world.rng.shuffle(specs);
@@ -97,6 +100,13 @@ export function stepWaves(world: World, dt: number): void {
           "#7bed9f", 15,
         );
         if (perfect) world.addText(W / 2, 155, "PERFECT — no leaks  +" + perfect + "g", "#ffd700", 13);
+        world.bus.emit("sfx", "clear");
+      }
+      // beating the victory wave wins the run; play continues endless
+      if (!world.won && world.wave >= BALANCE.victoryWave && !world.isDemo) {
+        world.won = true;
+        world.score += 2000;
+        world.showBanner("★ VICTORY ★", "endless mode — how far can you go?", "#ffd700");
         world.bus.emit("sfx", "clear");
       }
     }

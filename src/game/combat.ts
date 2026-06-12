@@ -87,9 +87,12 @@ export function damage(
 ): void {
   const eff = pierce ? dmg : Math.max(dmg * BALANCE.armorMinDamageFraction, dmg - e.armor);
   e.hp -= eff;
-  if (e.hp <= 0 && !e.credited && !e.leaked && source) {
-    e.credited = true;
-    source.kills++;
+  if (source) {
+    source.dmgDealt += eff;
+    if (e.hp <= 0 && !e.credited && !e.leaked) {
+      e.credited = true;
+      source.kills++;
+    }
   }
   if (!world.isDemo) {
     world.addText(
@@ -232,7 +235,7 @@ export function processDeaths(world: World): void {
               hp: miniHp,
               speed: e.speed * BALANCE.splitterMiniSpeedFactor,
               reward: Math.max(1, Math.round(e.reward * 0.3)),
-              r: miniDef.r, armor: 0, regen: 0, splits: 0, boss: false,
+              r: miniDef.r, armor: 0, regen: 0, splits: 0, boss: false, flies: false,
             },
             e.x + (i ? 12 : -12), e.y, e.wpIndex,
           ] as const);

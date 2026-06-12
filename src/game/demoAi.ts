@@ -25,7 +25,7 @@ export function stepDemoAi(world: World, dt: number): void {
   } else {
     const t = world.rng.pick(world.towers);
     if (t.level < BALANCE.maxTowerLevel && world.gold >= upgradeCost(t)) {
-      tryUpgrade(world, t);
+      tryUpgrade(world, t, world.rng.next() < 0.5 ? 0 : 1);
     }
   }
 }

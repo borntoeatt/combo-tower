@@ -65,7 +65,7 @@ describe("veterancy", () => {
     const t = world.towers[0]!;
     const baseDmg = towerStats(t).dmg;
 
-    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false, flies: false });
     damage(world, world.enemies[0]!, 999, false, t);
     expect(t.kills).toBe(1);
 
@@ -79,7 +79,7 @@ describe("veterancy", () => {
     controller.startGame();
     buildTower(world, "gunner", 2, 2);
     const t = world.towers[0]!;
-    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false, flies: false });
     const e = world.enemies[0]!;
     damage(world, e, 999, false, t);
     damage(world, e, 999, false, t);
@@ -91,8 +91,8 @@ describe("healers", () => {
   it("heal wounded allies in range but not themselves", () => {
     const { world, controller } = makeGame(5);
     controller.startGame();
-    world.spawnEnemy({ type: "healer", hp: 100, speed: 0, reward: 1, r: 12, armor: 0, regen: 0, splits: 0, boss: false });
-    world.spawnEnemy({ type: "grunt", hp: 100, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    world.spawnEnemy({ type: "healer", hp: 100, speed: 0, reward: 1, r: 12, armor: 0, regen: 0, splits: 0, boss: false, flies: false });
+    world.spawnEnemy({ type: "grunt", hp: 100, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false, flies: false });
     const [healer, grunt] = world.enemies as [typeof world.enemies[0], typeof world.enemies[0]];
     healer.hp = 50;
     grunt.hp = 50;

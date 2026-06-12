@@ -29,7 +29,7 @@ export function buildTower(world: World, type: TowerTypeId, c: number, r: number
     level: 1, cooldown: 0, spent: def.cost,
     angle: world.rng.range(0, Math.PI * 2),
     recoil: 0, mode: 0, flash: 0, born: world.time,
-    kills: 0,
+    kills: 0, dmgDealt: 0, spec: null,
   });
   burst(world, x, y, 12, def.color);
   world.rings.push({ x, y, r: 4, max: 30, color: def.color, t: 0.35, dur: 0.35 });
@@ -48,23 +48,24 @@ export function veteranRank(t: Tower): number {
 
 export function towerStats(t: Tower): TowerStats {
   const def = TOWER_TYPES[t.type];
+  const spec = t.spec !== null ? def.specs[t.spec] : undefined;
   const m = (1 + (t.level - 1) * BALANCE.upgradeDmgPerLevel) *
     (1 + veteranRank(t) * BALANCE.veteranDmgPerRank);
   return {
-    name: def.name,
+    name: spec ? def.name + " · " + spec.name : def.name,
     color: def.color,
     glow: def.glow,
-    dmg: def.dmg * m,
-    poison: (def.poison ?? 0) * m,
-    range: def.range * (1 + (t.level - 1) * BALANCE.upgradeRangePerLevel),
-    rate: def.rate * (1 + (t.level - 1) * BALANCE.upgradeRatePerLevel),
-    splash: def.splash ?? 0,
-    slow: def.slow ?? 0,
-    slowDur: def.slowDur ?? 0,
-    poisonDur: def.poisonDur ?? 0,
-    chain: def.chain ?? 0,
+    dmg: def.dmg * m * (spec?.dmgM ?? 1),
+    poison: (def.poison ?? 0) * m * (spec?.poisonM ?? 1),
+    range: def.range * (1 + (t.level - 1) * BALANCE.upgradeRangePerLevel) * (spec?.rangeM ?? 1),
+    rate: def.rate * (1 + (t.level - 1) * BALANCE.upgradeRatePerLevel) * (spec?.rateM ?? 1),
+    splash: (def.splash ?? 0) * (spec?.splashM ?? 1),
+    slow: (def.slow ?? 0) * (spec?.slowM ?? 1),
+    slowDur: (def.slowDur ?? 0) * (spec?.slowDurM ?? 1),
+    poisonDur: (def.poisonDur ?? 0) * (spec?.poisonDurM ?? 1),
+    chain: (def.chain ?? 0) + (spec?.chainAdd ?? 0),
     chainRange: def.chainRange ?? 0,
-    pierce: def.pierce ?? false,
+    pierce: (def.pierce ?? false) || (spec?.pierce ?? false),
   };
 }
 
@@ -72,7 +73,11 @@ export function upgradeCost(t: Tower): number {
   return Math.round(TOWER_TYPES[t.type].cost * BALANCE.upgradeCostFactor * t.level);
 }
 
-export function tryUpgrade(world: World, t: Tower): boolean {
+/**
+ * Upgrade one level. The final level is a specialization choice —
+ * `spec` picks the branch (defaults to the first for keyboard flow).
+ */
+export function tryUpgrade(world: World, t: Tower, spec = 0): boolean {
   if (t.level >= BALANCE.maxTowerLevel) return false;
   const cost = upgradeCost(t);
   if (world.gold < cost) {
@@ -82,7 +87,12 @@ export function tryUpgrade(world: World, t: Tower): boolean {
   world.gold -= cost;
   t.spent += cost;
   t.level++;
-  world.addText(t.x, t.y - 24, "LEVEL " + t.level, "#7bed9f");
+  if (t.level >= BALANCE.maxTowerLevel) {
+    t.spec = spec;
+    world.addText(t.x, t.y - 24, TOWER_TYPES[t.type].specs[spec]!.name.toUpperCase() + "!", "#ffd700", 13);
+  } else {
+    world.addText(t.x, t.y - 24, "LEVEL " + t.level, "#7bed9f");
+  }
   world.rings.push({ x: t.x, y: t.y, r: 6, max: 46, color: TOWER_TYPES[t.type].color, t: 0.4, dur: 0.4 });
   burst(world, t.x, t.y, 8, TOWER_TYPES[t.type].color);
   world.bus.emit("sfx", "upgrade");
