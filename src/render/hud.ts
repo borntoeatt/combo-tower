@@ -5,7 +5,8 @@ import { waveComposition } from "../game/waves";
 import type { World } from "../game/world";
 import { pathRoundRect, roundRect } from "./helpers";
 import {
-  selectedPanelRect, STATS_RIGHT_X, uiButtonRect, uiPauseRect, uiSendWaveRect, uiSpeedRect,
+  selectedPanelRect, STATS_RIGHT_X, uiActionRect, uiButtonRect, uiDeselectRect,
+  uiPauseRect, uiSendWaveRect, uiSpeedRect,
 } from "./layout";
 import { BALANCE } from "../config/balance";
 
@@ -28,6 +29,19 @@ export function drawUI(
     ctx.fillRect(0, UI_Y, W * frac, 2);
   }
 
+  if (world.selected) {
+    drawActionButtons(ctx, world, world.selected);
+  } else {
+    drawBuildButtons(ctx, world, hoverBtn);
+  }
+  drawWaveControls(ctx, world);
+  drawStats(ctx, world);
+  drawSelectedPanel(ctx, world);
+}
+
+function drawBuildButtons(
+  ctx: CanvasRenderingContext2D, world: World, hoverBtn: number | null,
+): void {
   TYPE_ORDER.forEach((key, i) => {
     const def = TOWER_TYPES[key];
     const r = uiButtonRect(i);
@@ -60,7 +74,67 @@ export function drawUI(
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.fillText("[" + def.key + "]", r.x + 8, r.y + 60);
   });
+}
 
+/** Big touch-friendly actions for the selected tower. */
+function drawActionButtons(ctx: CanvasRenderingContext2D, world: World, t: NonNullable<World["selected"]>): void {
+  const def = TOWER_TYPES[t.type];
+  const maxed = t.level >= BALANCE.maxTowerLevel;
+  const cost = upgradeCost(t);
+  const canUp = !maxed && world.gold >= cost;
+
+  const buttons = [
+    {
+      r: uiActionRect(0),
+      title: maxed ? "MAX LEVEL" : "UPGRADE",
+      sub: maxed ? "fully upgraded" : cost + "g   [U]",
+      color: canUp ? "#7bed9f" : "rgba(255,255,255,0.35)",
+      bg: canUp ? "rgba(123,237,159,0.16)" : "rgba(255,255,255,0.04)",
+    },
+    {
+      r: uiActionRect(1),
+      title: "SELL",
+      sub: "+" + Math.round(t.spent * BALANCE.sellRefund) + "g   [X]",
+      color: "#ffb347",
+      bg: "rgba(255,179,71,0.13)",
+    },
+    {
+      r: uiActionRect(2),
+      title: "TARGET",
+      sub: (TARGET_MODES[t.mode] ?? "first") + "   [T]",
+      color: "#9ad0ff",
+      bg: "rgba(154,208,255,0.13)",
+    },
+  ];
+  for (const b of buttons) {
+    ctx.fillStyle = b.bg;
+    roundRect(ctx, b.r.x, b.r.y, b.r.w, b.r.h, 8);
+    ctx.textAlign = "center";
+    ctx.font = "bold 15px monospace";
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.title, b.r.x + b.r.w / 2, b.r.y + 28);
+    ctx.font = "11px monospace";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText(b.sub, b.r.x + b.r.w / 2, b.r.y + 47);
+  }
+  // tower identity chip on the upgrade button row
+  ctx.save();
+  ctx.shadowColor = def.glow;
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = def.color;
+  ctx.beginPath(); ctx.arc(buttons[0]!.r.x + 16, buttons[0]!.r.y + 14, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  const dr = uiDeselectRect();
+  ctx.fillStyle = "rgba(255,107,107,0.12)";
+  roundRect(ctx, dr.x, dr.y, dr.w, dr.h, 8);
+  ctx.textAlign = "center";
+  ctx.font = "bold 20px monospace";
+  ctx.fillStyle = "#ff6b6b";
+  ctx.fillText("✕", dr.x + dr.w / 2, dr.y + 40);
+}
+
+function drawWaveControls(ctx: CanvasRenderingContext2D, world: World): void {
   const sw = uiSendWaveRect();
   ctx.fillStyle = world.waveActive ? "rgba(255,255,255,0.04)" : "rgba(123,237,159,0.16)";
   roundRect(ctx, sw.x, sw.y, sw.w, sw.h, 8);
@@ -100,7 +174,9 @@ export function drawUI(
   roundRect(ctx, pp.x, pp.y, pp.w, pp.h, 6);
   ctx.fillStyle = world.paused ? "#ff6b6b" : "rgba(255,255,255,0.6)";
   ctx.fillText(world.paused ? "▶" : "❚❚", pp.x + pp.w / 2, pp.y + 21);
+}
 
+function drawStats(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.textAlign = "right";
   ctx.font = "bold 17px monospace";
   ctx.fillStyle = "#ffd700";
@@ -110,8 +186,6 @@ export function drawUI(
   ctx.fillStyle = "#9ad0ff";
   ctx.font = "bold 12px monospace";
   ctx.fillText("score " + world.score, STATS_RIGHT_X, UI_Y + 68);
-
-  drawSelectedPanel(ctx, world);
 }
 
 function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World): void {

@@ -7,7 +7,7 @@ import type { World } from "../game/world";
 import type { PointerState } from "../render/renderer";
 import {
   inRect, panelSellRect, panelTargetRect, panelUpgradeRect, selectedPanelRect,
-  uiButtonAt, uiPauseRect, uiSendWaveRect, uiSpeedRect,
+  uiActionRect, uiButtonAt, uiDeselectRect, uiPauseRect, uiSendWaveRect, uiSpeedRect,
 } from "../render/layout";
 
 /** Wires DOM mouse/keyboard events to game intents. */
@@ -53,11 +53,24 @@ export class InputController {
     }
 
     if (py >= UI_Y) {
-      const idx = uiButtonAt(px, py);
-      if (idx !== null) {
-        w.buildType = TYPE_ORDER[idx] ?? null;
-        w.selected = null;
-        return;
+      if (w.selected) {
+        // bar shows big tower actions while something is selected
+        const t = w.selected;
+        if (inRect(px, py, uiActionRect(0))) { tryUpgrade(w, t); return; }
+        if (inRect(px, py, uiActionRect(1))) { sellTower(w, t); return; }
+        if (inRect(px, py, uiActionRect(2))) {
+          t.mode = (t.mode + 1) % TARGET_MODES.length;
+          w.addText(t.x, t.y - 24, "target: " + (TARGET_MODES[t.mode] ?? "first"), "#9ad0ff");
+          return;
+        }
+        if (inRect(px, py, uiDeselectRect())) { w.selected = null; return; }
+      } else {
+        const idx = uiButtonAt(px, py);
+        if (idx !== null) {
+          w.buildType = TYPE_ORDER[idx] ?? null;
+          w.selected = null;
+          return;
+        }
       }
       if (inRect(px, py, uiSendWaveRect())) {
         if (!w.waveActive) sendWave(w, true);

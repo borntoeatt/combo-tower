@@ -22,6 +22,15 @@ export function uiSendWaveRect(): Rect { return { x: 654, y: UI_Y + 9, w: 104, h
 export function uiSpeedRect(): Rect    { return { x: 766, y: UI_Y + 9, w: 44, h: 31 }; }
 export function uiPauseRect(): Rect    { return { x: 766, y: UI_Y + 44, w: 44, h: 31 }; }
 
+/**
+ * While a tower is selected, the build buttons make way for big
+ * action buttons — the only touch-sized way to upgrade/sell on phones.
+ */
+export function uiActionRect(i: number): Rect {
+  return { x: 10 + i * 156, y: UI_Y + 9, w: 146, h: 66 };
+}
+export function uiDeselectRect(): Rect { return { x: 10 + 3 * 156, y: UI_Y + 9, w: 64, h: 66 }; }
+
 /** Info panel for a selected tower at (tx, ty) — drawn by hud, hit-tested by input. */
 export function selectedPanelRect(tx: number, ty: number): Rect {
   return { x: Math.min(W - 210, Math.max(8, tx - 100)), y: Math.max(8, ty - 118), w: 200, h: 86 };
