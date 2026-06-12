@@ -11,7 +11,8 @@ import { Renderer } from "./render/renderer";
 
 // ---------- composition root ----------
 const canvas = document.getElementById("game") as HTMLCanvasElement;
-const dpr = window.devicePixelRatio || 1;
+// cap at 2: 3x backing stores burn fill-rate for no visible gain
+const dpr = Math.min(2, window.devicePixelRatio || 1);
 canvas.width = W * dpr;
 canvas.height = H * dpr;
 

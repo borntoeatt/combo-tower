@@ -14,7 +14,7 @@ rendering, slow-mo kill cams, and a procedural synth soundtrack.
 npm install
 npm run dev        # dev server with HMR at http://localhost:5173
 npm test           # headless simulation test suite
-npm run build      # typecheck + production bundle into docs/
+npm run build      # typecheck + production bundle into dist/
 npm run preview    # serve the production build locally
 ```
 
