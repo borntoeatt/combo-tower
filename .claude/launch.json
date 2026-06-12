@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "combo-tower",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8765", "-d", "/Users/dimitarporkov/Desktop/game/combo-tower"],
+      "port": 8765
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Defense</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(ellipse at center, #131a2e 0%, #06080e 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    box-shadow: 0 8px 90px rgba(60, 130, 255, 0.22), 0 2px 16px rgba(0,0,0,0.65);
+    border-radius: 8px;
+    cursor: crosshair;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
