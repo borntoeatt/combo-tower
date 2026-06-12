@@ -22,4 +22,14 @@ export function uiSendWaveRect(): Rect { return { x: 654, y: UI_Y + 9, w: 104, h
 export function uiSpeedRect(): Rect    { return { x: 766, y: UI_Y + 9, w: 44, h: 31 }; }
 export function uiPauseRect(): Rect    { return { x: 766, y: UI_Y + 44, w: 44, h: 31 }; }
 
+/** Info panel for a selected tower at (tx, ty) — drawn by hud, hit-tested by input. */
+export function selectedPanelRect(tx: number, ty: number): Rect {
+  return { x: Math.min(W - 210, Math.max(8, tx - 100)), y: Math.max(8, ty - 118), w: 200, h: 86 };
+}
+
+/** Tappable rows inside the panel (touch screens have no U/X/T keys). */
+export function panelTargetRect(p: Rect): Rect  { return { x: p.x, y: p.y + 39, w: p.w, h: 15 }; }
+export function panelUpgradeRect(p: Rect): Rect { return { x: p.x, y: p.y + 54, w: p.w, h: 15 }; }
+export function panelSellRect(p: Rect): Rect    { return { x: p.x, y: p.y + 69, w: p.w, h: 17 }; }
+
 export const STATS_RIGHT_X = W - 14;

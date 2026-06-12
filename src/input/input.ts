@@ -5,7 +5,10 @@ import { buildTower, cellAt, sellTower, towerAt, tryUpgrade } from "../game/econ
 import { sendWave } from "../game/waves";
 import type { World } from "../game/world";
 import type { PointerState } from "../render/renderer";
-import { inRect, uiButtonAt, uiPauseRect, uiSendWaveRect, uiSpeedRect } from "../render/layout";
+import {
+  inRect, panelSellRect, panelTargetRect, panelUpgradeRect, selectedPanelRect,
+  uiButtonAt, uiPauseRect, uiSendWaveRect, uiSpeedRect,
+} from "../render/layout";
 
 /** Wires DOM mouse/keyboard events to game intents. */
 export class InputController {
@@ -63,6 +66,23 @@ export class InputController {
       if (inRect(px, py, uiSpeedRect())) { w.gameSpeed = w.gameSpeed === 1 ? 2 : 1; return; }
       if (inRect(px, py, uiPauseRect())) { w.paused = !w.paused; return; }
       return;
+    }
+
+    // taps on the selected tower's panel act on its rows (touch has no U/X/T)
+    if (w.selected) {
+      const panel = selectedPanelRect(w.selected.x, w.selected.y);
+      if (inRect(px, py, panel)) {
+        const t = w.selected;
+        if (inRect(px, py, panelTargetRect(panel))) {
+          t.mode = (t.mode + 1) % TARGET_MODES.length;
+          w.addText(t.x, t.y - 24, "target: " + (TARGET_MODES[t.mode] ?? "first"), "#9ad0ff");
+        } else if (inRect(px, py, panelUpgradeRect(panel))) {
+          tryUpgrade(w, t);
+        } else if (inRect(px, py, panelSellRect(panel))) {
+          sellTower(w, t);
+        }
+        return;
+      }
     }
 
     const cell = cellAt(px, py);

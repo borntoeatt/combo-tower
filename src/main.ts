@@ -14,8 +14,17 @@ const canvas = document.getElementById("game") as HTMLCanvasElement;
 const dpr = window.devicePixelRatio || 1;
 canvas.width = W * dpr;
 canvas.height = H * dpr;
-canvas.style.width = W + "px";
-canvas.style.height = H + "px";
+
+// scale the canvas down to fit small screens (phones); input maps
+// through getBoundingClientRect, so coordinates stay correct
+function fitCanvas(): void {
+  const scale = Math.min(1, window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width = Math.round(W * scale) + "px";
+  canvas.style.height = Math.round(H * scale) + "px";
+}
+fitCanvas();
+addEventListener("resize", fitCanvas);
+addEventListener("orientationchange", fitCanvas);
 const ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("2D canvas not supported");
 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

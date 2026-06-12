@@ -5,7 +5,7 @@ import { waveComposition } from "../game/waves";
 import type { World } from "../game/world";
 import { pathRoundRect, roundRect } from "./helpers";
 import {
-  STATS_RIGHT_X, uiButtonRect, uiPauseRect, uiSendWaveRect, uiSpeedRect,
+  selectedPanelRect, STATS_RIGHT_X, uiButtonRect, uiPauseRect, uiSendWaveRect, uiSpeedRect,
 } from "./layout";
 import { BALANCE } from "../config/balance";
 
@@ -119,13 +119,13 @@ function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World): void {
   if (!t) return;
   const s = towerStats(t);
   const def = TOWER_TYPES[t.type];
-  const px = Math.min(W - 210, Math.max(8, t.x - 100));
-  const py = Math.max(8, t.y - 118);
+  const rect = selectedPanelRect(t.x, t.y);
+  const px = rect.x, py = rect.y;
   ctx.fillStyle = "rgba(8,12,26,0.94)";
-  roundRect(ctx, px, py, 200, 86, 8);
+  roundRect(ctx, px, py, rect.w, rect.h, 8);
   ctx.strokeStyle = def.color;
   ctx.lineWidth = 1;
-  ctx.beginPath(); pathRoundRect(ctx, px, py, 200, 86, 8); ctx.stroke();
+  ctx.beginPath(); pathRoundRect(ctx, px, py, rect.w, rect.h, 8); ctx.stroke();
   ctx.textAlign = "left";
   ctx.font = "bold 13px monospace";
   ctx.fillStyle = def.color;

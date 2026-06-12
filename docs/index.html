@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Grid Defense</title>
 <style>
   html, body {
@@ -17,9 +17,10 @@
     box-shadow: 0 8px 90px rgba(60, 130, 255, 0.22), 0 2px 16px rgba(0,0,0,0.65);
     border-radius: 8px;
     cursor: crosshair;
+    touch-action: manipulation; /* no double-tap zoom on game taps */
   }
 </style>
-  <script type="module" crossorigin src="./assets/index-C_kNVoV8.js"></script>
+  <script type="module" crossorigin src="./assets/index-DNvALavm.js"></script>
 </head>
 <body>
 <canvas id="game"></canvas>
