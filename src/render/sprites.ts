@@ -1,6 +1,6 @@
 import { ENEMY_TYPES } from "../config/enemies";
 import { TOWER_TYPES } from "../config/towers";
-import { towerStats } from "../game/economy";
+import { towerStats, veteranRank } from "../game/economy";
 import { makeParticle } from "../game/effects";
 import type { Enemy, Tower } from "../game/types";
 import type { World } from "../game/world";
@@ -108,6 +108,15 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
     ctx.fillStyle = i === 3 ? "#ff6b9d" : "#ffd700";
     ctx.fillRect(-13 + i * 8, 17, 6, 3);
   }
+
+  // veteran stars above the base
+  const rank = veteranRank(t);
+  if (rank > 0) {
+    ctx.fillStyle = "#ffd700";
+    ctx.font = "bold 9px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("★".repeat(rank), 0, -19);
+  }
   ctx.restore();
 }
 
@@ -170,13 +179,30 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, world: World, e: Enemy)
   ctx.beginPath(); ctx.arc(e.r * 0.32, -e.r * 0.2, e.r * 0.12, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  const w = e.r * 2.1;
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(e.x - w / 2, e.y - e.r - 10, w, 4.5);
-  const frac = Math.max(0, e.hp / e.maxHp);
-  ctx.fillStyle = frac > 0.5 ? "#7bed9f" : frac > 0.25 ? "#ffb347" : "#ff6b6b";
-  ctx.fillRect(e.x - w / 2, e.y - e.r - 10, w * frac, 4.5);
+  // healer aura: pulsing ring + cross badge
+  if (d.heals) {
+    const pulse = (world.time * 0.7 + e.wob) % 1;
+    ctx.strokeStyle = "rgba(43,203,186," + (0.45 * (1 - pulse)).toFixed(2) + ")";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r + pulse * ((d.healRange ?? 60) - e.r), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillRect(e.x - 1.5, e.y + 2, 3, 9);
+    ctx.fillRect(e.x - 4.5, e.y + 5, 9, 3);
+  }
+
+  // hp bar only once blooded — keeps the field clean
+  if (e.hp < e.maxHp - 0.5) {
+    const w = e.r * 2.1;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(e.x - w / 2, e.y - e.r - 10, w, 4.5);
+    const frac = Math.max(0, e.hp / e.maxHp);
+    ctx.fillStyle = frac > 0.5 ? "#7bed9f" : frac > 0.25 ? "#ffb347" : "#ff6b6b";
+    ctx.fillRect(e.x - w / 2, e.y - e.r - 10, w * frac, 4.5);
+  }
   if (e.regen > 0) {
+    const w = e.r * 2.1;
     ctx.fillStyle = "#78e08f";
     ctx.font = "bold 9px monospace";
     ctx.textAlign = "center";

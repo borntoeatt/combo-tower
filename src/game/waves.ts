@@ -17,6 +17,7 @@ export function waveComposition(n: number): EnemyTypeId[] {
     if (n >= 5) push("tank", 1 + Math.floor(n / 4));
     if (n >= 7) push("regen", 1 + Math.floor(n / 5));
     if (n >= 9) push("splitter", 1 + Math.floor(n / 6));
+    if (n >= 11) push("healer", 1 + Math.floor(n / 9));
   }
   return comp;
 }
@@ -45,6 +46,8 @@ export function buildWave(world: World, n: number): EnemySpec[] {
 export function sendWave(world: World, early: boolean): void {
   world.wave++;
   world.waveQueue = buildWave(world, world.wave);
+  world.waveTotal = world.waveQueue.length;
+  world.waveLeaks = 0;
   world.spawnTimer = 0;
   world.waveActive = true;
   const isBossWave = world.wave % BALANCE.bossEvery === 0;
@@ -79,9 +82,12 @@ export function stepWaves(world: World, dt: number): void {
       world.waveActive = false;
       world.interTimer = BALANCE.interWaveDelay;
       const interest = Math.min(BALANCE.interestCap, Math.floor(world.gold * BALANCE.interestRate));
-      const bonus = BALANCE.waveClearBase + world.wave * BALANCE.waveClearPerWave + interest;
+      const perfect = world.waveLeaks === 0
+        ? BALANCE.perfectBonusBase + world.wave * BALANCE.perfectBonusPerWave
+        : 0;
+      const bonus = BALANCE.waveClearBase + world.wave * BALANCE.waveClearPerWave + interest + perfect;
       world.gold += bonus;
-      world.score += world.wave * 60;
+      world.score += world.wave * 60 + (perfect ? world.wave * 40 : 0);
       world.bus.emit("waveCleared", { wave: world.wave, bonus });
       if (!world.isDemo) {
         world.addText(
@@ -90,6 +96,7 @@ export function stepWaves(world: World, dt: number): void {
             (interest ? " (incl. " + interest + " interest)" : ""),
           "#7bed9f", 15,
         );
+        if (perfect) world.addText(W / 2, 155, "PERFECT — no leaks  +" + perfect + "g", "#ffd700", 13);
         world.bus.emit("sfx", "clear");
       }
     }

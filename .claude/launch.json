@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8765", "-d", "/Users/dimitarporkov/Desktop/game/combo-tower"],
       "port": 8765
+    },
+    {
+      "name": "grid-defense",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5180", "--strictPort"],
+      "port": 5180
     }
   ]
 }

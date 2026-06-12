@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { EventBus } from "../src/core/eventBus";
 import { Rng } from "../src/core/rng";
 import { BestScoreRepository } from "../src/core/storage";
+import { damage } from "../src/game/combat";
 import { GameController } from "../src/game/controller";
-import { buildTower, sellTower, towerStats, tryUpgrade } from "../src/game/economy";
+import { buildTower, sellTower, towerStats, tryUpgrade, veteranRank } from "../src/game/economy";
+import { stepEnemies } from "../src/game/movement";
+import { stepWaves } from "../src/game/waves";
 import { World } from "../src/game/world";
 import { Renderer } from "../src/render/renderer";
 import type { PointerState } from "../src/render/renderer";
@@ -47,6 +50,78 @@ describe("wave composition", () => {
     expect(waveComposition(5)).toContain("boss");
     expect(waveComposition(10)).toContain("boss");
     expect(waveComposition(4)).not.toContain("boss");
+  });
+  it("introduces healers from wave 11", () => {
+    expect(waveComposition(9)).not.toContain("healer");
+    expect(waveComposition(11)).toContain("healer");
+  });
+});
+
+describe("veterancy", () => {
+  it("credits kills to the firing tower and raises its damage", () => {
+    const { world, controller } = makeGame(3);
+    controller.startGame();
+    buildTower(world, "gunner", 2, 2);
+    const t = world.towers[0]!;
+    const baseDmg = towerStats(t).dmg;
+
+    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    damage(world, world.enemies[0]!, 999, false, t);
+    expect(t.kills).toBe(1);
+
+    t.kills = 100; // past every threshold
+    expect(veteranRank(t)).toBe(3);
+    expect(towerStats(t).dmg).toBeCloseTo(baseDmg * 1.3);
+  });
+
+  it("does not double-credit an already dead enemy", () => {
+    const { world, controller } = makeGame(3);
+    controller.startGame();
+    buildTower(world, "gunner", 2, 2);
+    const t = world.towers[0]!;
+    world.spawnEnemy({ type: "grunt", hp: 1, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    const e = world.enemies[0]!;
+    damage(world, e, 999, false, t);
+    damage(world, e, 999, false, t);
+    expect(t.kills).toBe(1);
+  });
+});
+
+describe("healers", () => {
+  it("heal wounded allies in range but not themselves", () => {
+    const { world, controller } = makeGame(5);
+    controller.startGame();
+    world.spawnEnemy({ type: "healer", hp: 100, speed: 0, reward: 1, r: 12, armor: 0, regen: 0, splits: 0, boss: false });
+    world.spawnEnemy({ type: "grunt", hp: 100, speed: 0, reward: 1, r: 11, armor: 0, regen: 0, splits: 0, boss: false });
+    const [healer, grunt] = world.enemies as [typeof world.enemies[0], typeof world.enemies[0]];
+    healer.hp = 50;
+    grunt.hp = 50;
+    stepEnemies(world, 1);
+    expect(grunt.hp).toBeGreaterThan(50);   // mended by the aura
+    expect(healer.hp).toBe(50);             // no self-heal
+  });
+});
+
+describe("perfect wave bonus", () => {
+  function clearWave(world: World, leaks: number): number {
+    world.wave = 3;
+    world.waveActive = true;
+    world.waveQueue = [];
+    world.enemies = [];
+    world.waveLeaks = leaks;
+    const before = world.gold;
+    stepWaves(world, 1 / 60);
+    return world.gold - before;
+  }
+
+  it("pays extra gold only when nothing leaked", () => {
+    const { world: a, controller: ca } = makeGame(9);
+    ca.startGame();
+    const { world: b, controller: cb } = makeGame(9);
+    cb.startGame();
+    const perfectGain = clearWave(a, 0);
+    const leakyGain = clearWave(b, 1);
+    expect(perfectGain - leakyGain).toBe(10 + 3 * 2); // perfectBonusBase + wave * perWave
   });
 });
 

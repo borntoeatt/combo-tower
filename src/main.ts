@@ -28,6 +28,12 @@ const audioEngine = new AudioEngine(world, bus);
 const input = new InputController(canvas, world, controller, () => audioEngine.unlock());
 const debug = new DebugOverlay();
 
+// console access for debugging — pairs with the ` overlay
+declare global {
+  interface Window { __game?: { world: World; controller: GameController } }
+}
+window.__game = { world, controller };
+
 controller.startDemo();
 
 // ---------- main loop ----------

@@ -38,5 +38,5 @@ export const TOWER_TYPES: Readonly<Record<TowerTypeId, TowerDef>> = {
 export const TYPE_ORDER: ReadonlyArray<TowerTypeId> =
   ["gunner", "cannon", "frost", "venom", "tesla", "sniper"];
 
-export const TARGET_MODES = ["first", "strong", "close"] as const;
+export const TARGET_MODES = ["first", "strong", "close", "weak"] as const;
 export type TargetMode = (typeof TARGET_MODES)[number];

@@ -39,4 +39,8 @@ export const BALANCE = {
   armorMinDamageFraction: 0.25, // armor can never reduce a hit below this
   splitterMiniSpeedFactor: 1.4,
   maxParticles: 450,
+  veteranKillThresholds: [10, 30, 60], // kills needed for each ★ rank
+  veteranDmgPerRank: 0.1,
+  perfectBonusBase: 10,         // extra gold for clearing a wave with zero leaks
+  perfectBonusPerWave: 2,
 } as const;

@@ -24,6 +24,7 @@ export interface Enemy extends EnemySpec {
   dist: number;
   wob: number;
   leaked: boolean;
+  credited: boolean;  // kill already attributed to a tower
 }
 
 export interface Tower {
@@ -40,6 +41,7 @@ export interface Tower {
   mode: number;       // index into TARGET_MODES
   flash: number;
   born: number;
+  kills: number;      // lifetime kill credit — drives veteran ranks
 }
 
 /** Effective (level-scaled) combat stats for a tower. */
@@ -76,6 +78,7 @@ export interface Bullet {
   big: boolean;
   t: number;
   trail: Array<readonly [number, number]>;
+  source: Tower | null; // for kill credit; may outlive the tower (sold)
 }
 
 export interface Beam {

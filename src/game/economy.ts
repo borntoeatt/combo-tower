@@ -29,6 +29,7 @@ export function buildTower(world: World, type: TowerTypeId, c: number, r: number
     level: 1, cooldown: 0, spent: def.cost,
     angle: world.rng.range(0, Math.PI * 2),
     recoil: 0, mode: 0, flash: 0, born: world.time,
+    kills: 0,
   });
   burst(world, x, y, 12, def.color);
   world.rings.push({ x, y, r: 4, max: 30, color: def.color, t: 0.35, dur: 0.35 });
@@ -36,9 +37,19 @@ export function buildTower(world: World, type: TowerTypeId, c: number, r: number
   return true;
 }
 
+/** Veteran rank (0–3) earned from kill credit. Each rank adds damage. */
+export function veteranRank(t: Tower): number {
+  let rank = 0;
+  for (const need of BALANCE.veteranKillThresholds) {
+    if (t.kills >= need) rank++;
+  }
+  return rank;
+}
+
 export function towerStats(t: Tower): TowerStats {
   const def = TOWER_TYPES[t.type];
-  const m = 1 + (t.level - 1) * BALANCE.upgradeDmgPerLevel;
+  const m = (1 + (t.level - 1) * BALANCE.upgradeDmgPerLevel) *
+    (1 + veteranRank(t) * BALANCE.veteranDmgPerRank);
   return {
     name: def.name,
     color: def.color,

@@ -1,11 +1,31 @@
 import { BALANCE } from "../config/balance";
+import { ENEMY_TYPES } from "../config/enemies";
 import { WP } from "../config/path";
 import { makeParticle } from "./effects";
 import type { World } from "./world";
 
+/** Healers mend wounded allies (not themselves) inside their aura. */
+function stepHealers(world: World, dt: number): void {
+  for (const h of world.enemies) {
+    const def = ENEMY_TYPES[h.type];
+    if (!def.heals || h.hp <= 0) continue;
+    const range = def.healRange ?? 60;
+    for (const e of world.enemies) {
+      if (e === h || e.hp <= 0 || e.hp >= e.maxHp) continue;
+      const dx = e.x - h.x, dy = e.y - h.y;
+      if (dx * dx + dy * dy > range * range) continue;
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.heals * dt);
+      if (world.rng.chance(dt * 4)) {
+        world.particles.push(makeParticle(world, e.x, e.y - e.r, "#2bcbba", 0.5, 16));
+      }
+    }
+  }
+}
+
 /** Walks enemies along the path, applies status effects and leaks. */
 export function stepEnemies(world: World, dt: number): void {
   const [endX, endY] = WP[WP.length - 1]!;
+  stepHealers(world, dt);
   for (const e of world.enemies) {
     e.wob += dt * 6;
     if (e.regen > 0 && e.hp > 0) {
@@ -43,6 +63,7 @@ export function stepEnemies(world: World, dt: number): void {
     if (e.wpIndex >= WP.length - 1 && e.hp > 0) {
       e.hp = 0;
       e.leaked = true;
+      world.waveLeaks++;
       world.lives -= e.boss ? BALANCE.bossLivesCost : 1;
       world.shake = 8;
       world.damageFlash = 1;

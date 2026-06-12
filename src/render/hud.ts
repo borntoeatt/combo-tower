@@ -1,6 +1,6 @@
 import { H, UI_Y, W } from "../config/balance";
 import { TARGET_MODES, TOWER_TYPES, TYPE_ORDER } from "../config/towers";
-import { towerStats, upgradeCost } from "../game/economy";
+import { towerStats, upgradeCost, veteranRank } from "../game/economy";
 import { waveComposition } from "../game/waves";
 import type { World } from "../game/world";
 import { pathRoundRect, roundRect } from "./helpers";
@@ -19,6 +19,14 @@ export function drawUI(
   ctx.fillRect(0, UI_Y, W, H - UI_Y);
   ctx.fillStyle = "rgba(120,150,255,0.3)";
   ctx.fillRect(0, UI_Y, W, 2);
+
+  // wave progress along the top edge of the bar
+  if (world.waveActive && world.waveTotal > 0) {
+    const remaining = world.enemies.length + world.waveQueue.length;
+    const frac = Math.max(0, Math.min(1, 1 - remaining / world.waveTotal));
+    ctx.fillStyle = "#7bed9f";
+    ctx.fillRect(0, UI_Y, W * frac, 2);
+  }
 
   TYPE_ORDER.forEach((key, i) => {
     const def = TOWER_TYPES[key];
@@ -122,11 +130,19 @@ function drawSelectedPanel(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.font = "bold 13px monospace";
   ctx.fillStyle = def.color;
   const maxed = t.level >= BALANCE.maxTowerLevel;
+  const rank = veteranRank(t);
   ctx.fillText(s.name + "  Lv" + t.level + (maxed ? " MAX" : ""), px + 10, py + 18);
+  if (rank > 0) {
+    ctx.fillStyle = "#ffd700";
+    ctx.textAlign = "right";
+    ctx.fillText("★".repeat(rank), px + 190, py + 18);
+    ctx.textAlign = "left";
+  }
   ctx.fillStyle = "rgba(255,255,255,0.8)";
   ctx.font = "11px monospace";
   ctx.fillText(
-    "dmg " + Math.round(s.dmg) + "  rng " + Math.round(s.range) + "  spd " + s.rate.toFixed(1) + "/s",
+    "dmg " + Math.round(s.dmg) + "  rng " + Math.round(s.range) + "  spd " + s.rate.toFixed(1) + "/s" +
+      "  ☠" + t.kills,
     px + 10, py + 34,
   );
   ctx.fillStyle = "#9ad0ff";
@@ -164,7 +180,9 @@ export function drawMenu(ctx: CanvasRenderingContext2D, world: World): void {
     "",
     "Gunner rapid · Cannon splash · Frost slow · Venom poison · Tesla chain · Sniper rail",
     "Tanks have ARMOR (snipers pierce, poison ignores). Regens heal. Splitters split.",
+    "HEALERS mend their kin — cut them down first.",
     "Unspent gold earns 6% INTEREST each wave. Boss every 5th.",
+    "No leaks = PERFECT bonus. Towers earn ★ veteran ranks with kills.",
   ];
   lines.forEach((l, i) => ctx.fillText(l, W / 2, 256 + i * 27));
 

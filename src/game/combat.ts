@@ -15,7 +15,10 @@ export function pickTarget(world: World, t: Tower, s: TowerStats): Enemy | null 
     const dx = e.x - t.x, dy = e.y - t.y;
     const d2 = dx * dx + dy * dy;
     if (d2 > s.range * s.range) continue;
-    const val = mode === "first" ? e.dist : mode === "strong" ? e.hp : -d2;
+    const val =
+      mode === "first" ? e.dist :
+      mode === "strong" ? e.hp :
+      mode === "weak" ? -e.hp : -d2;
     if (val > bestVal) { bestVal = val; target = e; }
   }
   return target;
@@ -35,9 +38,15 @@ export function nearestEnemy(
   return bestE;
 }
 
-export function damage(world: World, e: Enemy, dmg: number, pierce: boolean): void {
+export function damage(
+  world: World, e: Enemy, dmg: number, pierce: boolean, source: Tower | null = null,
+): void {
   const eff = pierce ? dmg : Math.max(dmg * BALANCE.armorMinDamageFraction, dmg - e.armor);
   e.hp -= eff;
+  if (e.hp <= 0 && !e.credited && !e.leaked && source) {
+    e.credited = true;
+    source.kills++;
+  }
   if (!world.isDemo) {
     world.addText(
       e.x + world.rng.range(-7, 7), e.y - e.r - 4,
@@ -66,7 +75,7 @@ export function stepTowers(world: World, dt: number): void {
         x1: t.x, y1: t.y, x2: target.x, y2: target.y,
         color: s.color, t: 0.14, dur: 0.14, width: 3, jagged: false,
       });
-      damage(world, target, s.dmg, true);
+      damage(world, target, s.dmg, true, t);
       burst(world, target.x, target.y, 8, s.color);
       world.bus.emit("sfx", "rail");
     } else if (t.type === "tesla") {
@@ -79,7 +88,7 @@ export function stepTowers(world: World, dt: number): void {
           x1: px, y1: py, x2: cur.x, y2: cur.y,
           color: s.color, t: 0.11, dur: 0.11, width: 2, jagged: true,
         });
-        damage(world, cur, dmgLeft, false);
+        damage(world, cur, dmgLeft, false, t);
         burst(world, cur.x, cur.y, 5, s.color);
         hitSet.add(cur);
         px = cur.x; py = cur.y;
@@ -104,6 +113,7 @@ export function stepTowers(world: World, dt: number): void {
         big: t.type === "cannon",
         t: 2.5,
         trail: [],
+        source: t,
       });
       world.bus.emit("sfx", "shoot");
     }
@@ -126,11 +136,11 @@ export function stepBullets(world: World, dt: number): void {
         explode(world, tg.x, tg.y, b.splash, b.color);
         for (const e of world.enemies) {
           const ex = e.x - tg.x, ey = e.y - tg.y;
-          if (ex * ex + ey * ey <= b.splash * b.splash) damage(world, e, b.dmg, false);
+          if (ex * ex + ey * ey <= b.splash * b.splash) damage(world, e, b.dmg, false, b.source);
         }
         world.bus.emit("sfx", "boom");
       } else {
-        damage(world, tg, b.dmg, false);
+        damage(world, tg, b.dmg, false, b.source);
         burst(world, tg.x, tg.y, 3, b.color);
         world.bus.emit("sfx", "hit");
       }

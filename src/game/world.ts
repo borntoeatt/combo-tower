@@ -41,6 +41,8 @@ export class World {
   spawnTimer = 0;
   waveActive = false;
   interTimer = 0;
+  waveTotal = 0;   // size of the current wave when it was sent
+  waveLeaks = 0;   // leaks during the current wave — 0 at clear = perfect
 
   buildType: TowerTypeId | null = null;
   selected: Tower | null = null;
@@ -72,6 +74,7 @@ export class World {
     this.wave = 0; this.score = 0; this.kills = 0;
     this.waveQueue = []; this.spawnTimer = 0; this.waveActive = false;
     this.interTimer = 4;
+    this.waveTotal = 0; this.waveLeaks = 0;
     this.buildType = "gunner"; this.selected = null;
     this.time = 0; this.shake = 0; this.gameSpeed = 1; this.paused = false;
     this.banner = null; this.bossWarnT = 0; this.damageFlash = 0;
@@ -90,7 +93,12 @@ export class World {
       dist: distAtWaypoint(wpIndex),
       wob: this.rng.range(0, Math.PI * 2),
       leaked: false,
+      credited: false,
     });
+    if (atX === undefined) {
+      // entry flash at the spawn portal
+      this.rings.push({ x: sx, y: sy, r: 4, max: spec.boss ? 40 : 24, color: "#7bed9f", t: 0.3, dur: 0.3 });
+    }
   }
 
   addText(x: number, y: number, msg: string, color: string, size = 12, dur = 1.2): void {

@@ -2,7 +2,7 @@ import { actForWave } from "../config/acts";
 import { CELL, FIELD_H, H, W } from "../config/balance";
 import { WP } from "../config/path";
 import { TOWER_TYPES } from "../config/towers";
-import { canBuildAt, cellAt } from "../game/economy";
+import { canBuildAt, cellAt, towerAt, towerStats } from "../game/economy";
 import type { Beam } from "../game/types";
 import type { World } from "../game/world";
 import { buildBackground, type CanvasFactory } from "./background";
@@ -76,6 +76,7 @@ export class Renderer {
     drawPortal(ctx, world, ex + CELL / 2 - 4, ey, "#ff6b6b");
 
     for (const t of world.towers) drawTower(ctx, world, t);
+    this.drawHoverRange(world, pointer);
     for (const e of world.enemies) drawEnemy(ctx, world, e);
 
     this.additivePass(world, act.ember);
@@ -204,6 +205,21 @@ export class Renderer {
       ctx.moveTo(bm.x1, bm.y1);
       ctx.lineTo(bm.x2, bm.y2);
     }
+    ctx.stroke();
+  }
+
+  /** Faint range ring when the cursor rests on a built tower. */
+  private drawHoverRange(world: World, pointer: PointerState): void {
+    if (world.state !== "playing" || pointer.y >= FIELD_H) return;
+    const cell = cellAt(pointer.x, pointer.y);
+    if (!cell) return;
+    const t = towerAt(world, cell.c, cell.r);
+    if (!t || t === world.selected) return;
+    const ctx = this.ctx;
+    ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, towerStats(t).range, 0, Math.PI * 2);
     ctx.stroke();
   }
 

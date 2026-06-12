@@ -1,9 +1,10 @@
 # Grid Defense
 
 A thoroughly overengineered HTML5 canvas tower defense. Six tower classes,
-five creep breeds plus bosses, targeting modes, an interest economy,
-attract-mode demo battles, additive-bloom rendering, slow-mo kill cams,
-and a procedural synth soundtrack.
+six creep breeds plus bosses (including aura **healers**), four targeting
+modes, an interest economy with **perfect-wave bonuses**, tower **veteran
+ranks** earned per kill, attract-mode demo battles, additive-bloom
+rendering, slow-mo kill cams, and a procedural synth soundtrack.
 
 **TypeScript (strict) · Vite · Vitest · zero runtime dependencies**
 
