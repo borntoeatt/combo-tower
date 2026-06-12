@@ -58,6 +58,64 @@ describe("wave composition", () => {
     expect(waveComposition(9)).not.toContain("healer");
     expect(waveComposition(11)).toContain("healer");
   });
+  it("introduces wasps from wave 13", () => {
+    expect(waveComposition(12)).not.toContain("wasp");
+    expect(waveComposition(13)).toContain("wasp");
+  });
+});
+
+describe("difficulty", () => {
+  it("scales lives and starting gold", () => {
+    const { world, controller } = makeGame(2);
+    world.difficulty = "hard";
+    controller.startGame();
+    expect(world.lives).toBe(12);
+    expect(world.gold).toBe(110);
+    world.difficulty = "easy";
+    controller.startGame();
+    expect(world.lives).toBe(30);
+    expect(world.gold).toBe(160);
+  });
+});
+
+describe("specializations", () => {
+  it("applies the chosen branch at max level", () => {
+    const { world, controller } = makeGame(4);
+    controller.startGame();
+    world.gold = 100000;
+    buildTower(world, "tesla", 2, 2);
+    const t = world.towers[0]!;
+    tryUpgrade(world, t); // 2
+    tryUpgrade(world, t); // 3
+    const before = towerStats(t);
+    expect(t.spec).toBeNull();
+    tryUpgrade(world, t, 0); // Superconductor: chains +2
+    expect(t.level).toBe(4);
+    expect(t.spec).toBe(0);
+    const after = towerStats(t);
+    expect(after.chain).toBe(before.chain + 2);
+    expect(after.name).toContain("Superconductor");
+  });
+});
+
+describe("flying wasps", () => {
+  it("cross the map in a straight line and leak a life", () => {
+    const { world, controller } = makeGame(6);
+    controller.startGame();
+    world.waveActive = true; // hold the auto-spawner off
+    world.waveQueue = [];
+    world.spawnEnemy({ type: "wasp", hp: 50, speed: 200, reward: 1, r: 9, armor: 0, regen: 0, splits: 0, boss: false, flies: true });
+    const livesBefore = world.lives;
+    let leftPathRow = false;
+    for (let i = 0; i < 60 * 8 && world.enemies.length > 0; i++) {
+      controller.update(DT);
+      const e = world.enemies[0];
+      if (e && e.x > 300 && e.x < 700) leftPathRow ||= Math.abs(e.y - 140) < 30;
+    }
+    expect(world.enemies).toHaveLength(0);          // flew off and leaked
+    expect(world.lives).toBe(livesBefore - 1);
+    expect(leftPathRow).toBe(true);                 // stayed on the straight lane
+  });
 });
 
 describe("veterancy", () => {
@@ -226,6 +284,37 @@ describe("full game simulation", () => {
     for (let i = 0; i < 600; i++) controller.update(DT);
     expect(world.state).toBe("playing");
     expect(world.wave).toBeGreaterThan(0);
+  });
+
+  it("renders 1000 late-game frames without throwing (strict ctx)", () => {
+    const { world, controller, renderer } = makeGame(31337);
+    controller.startGame();
+    world.gold = 100000;
+    // a dense board with every tower type, fully specialized
+    const spots: Array<[TowerTypeId, number, number]> = [
+      ["gunner", 2, 2], ["cannon", 5, 4], ["frost", 8, 8], ["venom", 11, 8],
+      ["tesla", 13, 4], ["sniper", 16, 4], ["gunner", 3, 4], ["cannon", 10, 5],
+    ];
+    for (const [type, c, r] of spots) buildTower(world, type, c, r);
+    for (const t of world.towers) {
+      while (t.level < 4) tryUpgrade(world, t, 1);
+      t.kills = 100;
+    }
+    world.wave = 24; // late game: healers, wasps, bosses next wave
+    world.interTimer = 0.01;
+    const zoomed: PointerState = {
+      x: 300, y: 200, hoverBtn: null, pendingCell: { c: 1, r: 1 },
+      cam: { z: 1.8, cx: 400, cy: 300 },
+    };
+    for (let i = 0; i < 1000; i++) {
+      controller.update(DT);
+      renderer.render(world, i % 2 ? POINTER : zoomed);
+    }
+    expect(world.wave).toBeGreaterThanOrEqual(25);
+    // also render the win/gameover paths through the strict ctx
+    world.won = true;
+    world.state = "gameover";
+    renderer.render(world, POINTER);
   });
 
   it("is deterministic for a fixed seed", () => {

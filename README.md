@@ -1,10 +1,16 @@
 # Grid Defense
 
-A thoroughly overengineered HTML5 canvas tower defense. Six tower classes,
-six creep breeds plus bosses (including aura **healers**), four targeting
-modes, an interest economy with **perfect-wave bonuses**, tower **veteran
-ranks** earned per kill, attract-mode demo battles, additive-bloom
-rendering, slow-mo kill cams, and a procedural synth soundtrack.
+A thoroughly overengineered HTML5 canvas tower defense. Six tower classes
+with **max-level specializations**, seven creep breeds plus bosses
+(including aura **healers** and path-ignoring **flying wasps**), four
+targeting modes, an interest economy with **perfect-wave bonuses**, tower
+**veteran ranks** earned per kill, three difficulties with a victory-then-
+endless arc, attract-mode demo battles, additive-bloom rendering, slow-mo
+kill cams, and a procedural synth soundtrack.
+
+Installable as a **PWA** (offline after first visit), phone-friendly with
+a portrait layout, pinch-zoom camera, two-tap building and haptics.
+Play it: https://borntoeatt.github.io/grid-defense/
 
 **TypeScript (strict) · Vite · Vitest · zero runtime dependencies**
 
