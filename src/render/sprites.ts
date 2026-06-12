@@ -63,6 +63,12 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
     ctx.fillStyle = def.color;
     ctx.beginPath(); ctx.arc(0, 0, 19, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
+    if (world.rng.chance(0.04)) {
+      // drifting snowflake
+      world.particles.push(makeParticle(
+        world, t.x + world.rng.range(-12, 12), t.y - 14, "#dff0ff", 0.8, 8, 26,
+      ));
+    }
   } else if (t.type === "tesla") {
     const a1 = world.time * 4 + t.y;
     ctx.fillStyle = def.color;
@@ -85,11 +91,11 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
   ctx.shadowColor = def.glow;
   ctx.shadowBlur = sel || t.flash > 0 ? 14 : 7;
   ctx.fillStyle = def.color;
-  roundRect(ctx, -4, -5, 22, 10, 4);
+  const muzzleX = drawTurret(ctx, t.type, def.color);
   if (t.flash > 0.45) {
     ctx.globalAlpha = (t.flash - 0.45) * 1.8;
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(20, 0, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(muzzleX, 0, 5.5, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
   ctx.restore();
@@ -120,6 +126,54 @@ export function drawTower(ctx: CanvasRenderingContext2D, world: World, t: Tower)
   ctx.restore();
 }
 
+/**
+ * Type-specific turret silhouette, drawn in barrel space (pointing +x).
+ * Returns the muzzle x offset so the flash lands on the right spot.
+ */
+function drawTurret(ctx: CanvasRenderingContext2D, type: Tower["type"], color: string): number {
+  switch (type) {
+    case "gunner": // twin rapid-fire barrels
+      roundRect(ctx, -4, -6.5, 20, 5, 2);
+      roundRect(ctx, -4, 1.5, 20, 5, 2);
+      return 18;
+    case "cannon": { // fat mortar tube with a muzzle band
+      roundRect(ctx, -5, -6.5, 22, 13, 5);
+      ctx.fillStyle = shade(color, -55);
+      ctx.fillRect(12, -7, 4, 14);
+      return 19;
+    }
+    case "frost": { // crystal spike
+      ctx.beginPath();
+      ctx.moveTo(-3, -7); ctx.lineTo(20, 0); ctx.lineTo(-3, 7);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.beginPath();
+      ctx.moveTo(2, -2.5); ctx.lineTo(14, 0); ctx.lineTo(2, 2.5);
+      ctx.closePath(); ctx.fill();
+      return 20;
+    }
+    case "venom": { // injector tube ending in a toxin orb
+      roundRect(ctx, -4, -3.5, 15, 7, 3);
+      ctx.beginPath(); ctx.arc(15, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath(); ctx.arc(13.5, -2, 2, 0, Math.PI * 2); ctx.fill();
+      return 21;
+    }
+    case "tesla": { // coil rod with discs and a tip sphere
+      roundRect(ctx, -4, -2.5, 19, 5, 2);
+      ctx.fillRect(5, -7, 3, 14);
+      ctx.fillRect(10, -5.5, 3, 11);
+      ctx.beginPath(); ctx.arc(17, 0, 3.5, 0, Math.PI * 2); ctx.fill();
+      return 19;
+    }
+    case "sniper": // long rail with scope and muzzle brake
+      roundRect(ctx, -6, -2.5, 30, 5, 2);
+      ctx.fillRect(21, -4.5, 3, 9);
+      ctx.beginPath(); ctx.arc(3, -5, 2.5, 0, Math.PI * 2); ctx.fill();
+      return 26;
+  }
+}
+
 export function drawEnemy(ctx: CanvasRenderingContext2D, world: World, e: Enemy): void {
   const d = ENEMY_TYPES[e.type];
   const frosty = e.slowT > 0, poisoned = e.poisonT > 0;
@@ -132,6 +186,11 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, world: World, e: Enemy)
   ctx.beginPath(); ctx.ellipse(0, e.r * 0.85, e.r * 0.9, e.r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
 
   if (e.boss) {
+    // menacing ground ring
+    const pr = e.r * (1.45 + 0.15 * Math.sin(world.time * 4));
+    ctx.strokeStyle = "rgba(196,69,105,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(0, e.r * 0.85, pr, pr * 0.35, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.shadowColor = d.color;
     ctx.shadowBlur = 18 + Math.sin(world.time * 5) * 6;
   }

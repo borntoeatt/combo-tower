@@ -2,7 +2,7 @@ import { BALANCE } from "../config/balance";
 import { ENEMY_TYPES } from "../config/enemies";
 import { TARGET_MODES } from "../config/towers";
 import { towerStats } from "./economy";
-import { burst, explode } from "./effects";
+import { burst, deathPop, explode } from "./effects";
 import type { Enemy, EnemySpec, Tower, TowerStats } from "./types";
 import type { World } from "./world";
 
@@ -166,7 +166,8 @@ export function processDeaths(world: World): void {
       world.gold += e.reward;
       world.score += e.reward * 10;
       world.addText(e.x, e.y - 12, "+" + e.reward + "g", "#ffd700");
-      burst(world, e.x, e.y, e.boss ? 30 : 10, ENEMY_TYPES[e.type].color);
+      if (e.boss) burst(world, e.x, e.y, 30, ENEMY_TYPES[e.type].color);
+      else deathPop(world, e.x, e.y, e.r, ENEMY_TYPES[e.type].color);
       world.bus.emit("enemyKilled", { type: e.type, boss: e.boss, reward: e.reward });
       if (e.boss) {
         explode(world, e.x, e.y, 100, "#c44569");

@@ -41,6 +41,21 @@ export function distAtWaypoint(i: number): number {
   return wpDist[Math.min(i, wpDist.length - 1)]!;
 }
 
+/** Total walking length of the path in pixels. */
+export const pathLength = wpDist[wpDist.length - 1]!;
+
+/** Point on the path at a given walking distance (clamped). */
+export function pointAtDist(d: number): readonly [number, number] {
+  const dist = Math.max(0, Math.min(pathLength, d));
+  let i = 1;
+  while (i < wpDist.length - 1 && wpDist[i]! < dist) i++;
+  const [ax, ay] = WP[i - 1]!;
+  const [bx, by] = WP[i]!;
+  const seg = wpDist[i]! - wpDist[i - 1]!;
+  const f = seg > 0 ? (dist - wpDist[i - 1]!) / seg : 0;
+  return [ax + (bx - ax) * f, ay + (by - ay) * f] as const;
+}
+
 /** Buildable cells adjacent to the path — candidate spots for the demo AI. */
 export const goodSpots: ReadonlyArray<readonly [number, number]> = (() => {
   const spots: Array<readonly [number, number]> = [];

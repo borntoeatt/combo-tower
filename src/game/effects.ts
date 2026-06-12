@@ -5,16 +5,18 @@ import type { World } from "./world";
 /** Visual-effect helpers + per-frame lifetime bookkeeping. */
 
 export function makeParticle(
-  world: World, x: number, y: number, color: string, life: number, speed: number,
+  world: World, x: number, y: number, color: string, life: number, speed: number, g = 0,
 ): Particle {
   const a = world.rng.range(0, Math.PI * 2);
   const s = speed * (0.5 + world.rng.next());
   return {
     x, y,
     vx: Math.cos(a) * s,
-    vy: Math.sin(a) * s,
+    vy: Math.sin(a) * s - (g > 0 ? speed * 0.5 : 0), // debris kicks upward first
     t: life * (0.6 + world.rng.range(0, 0.8)),
     color,
+    g,
+    size: 2.5 + world.rng.range(0, 2.5),
   };
 }
 
@@ -22,11 +24,26 @@ export function burst(world: World, x: number, y: number, n: number, color: stri
   for (let i = 0; i < n; i++) world.particles.push(makeParticle(world, x, y, color, 0.5, 120));
 }
 
+/** Glowing debris that arcs under gravity — reads as chunks, not sparks. */
+export function debris(world: World, x: number, y: number, n: number, color: string): void {
+  for (let i = 0; i < n; i++) {
+    world.particles.push(makeParticle(world, x, y, color, 0.9, 150, 420));
+  }
+}
+
+/** Small pop for a regular kill: ring + shards of the body color. */
+export function deathPop(world: World, x: number, y: number, r: number, color: string): void {
+  world.rings.push({ x, y, r: 3, max: r * 2.2, color, t: 0.22, dur: 0.22 });
+  burst(world, x, y, 8, color);
+  debris(world, x, y, 4, color);
+}
+
 export function explode(world: World, x: number, y: number, radius: number, color: string): void {
   world.rings.push({ x, y, r: 8, max: radius, color, t: 0.3, dur: 0.3 });
   world.rings.push({ x, y, r: 4, max: radius * 0.55, color: "#ffffff", t: 0.18, dur: 0.18 });
   burst(world, x, y, 18, color);
   burst(world, x, y, 8, "#ffe9a0");
+  debris(world, x, y, 8, "#ffd27e");
   for (let i = 0; i < 4; i++) {
     const a = world.rng.range(0, Math.PI * 2);
     world.smokes.push({
@@ -44,8 +61,10 @@ export function explode(world: World, x: number, y: number, radius: number, colo
 
 export function stepEffects(world: World, dt: number): void {
   for (const p of world.particles) {
+    p.vy += p.g * dt;
     p.x += p.vx * dt; p.y += p.vy * dt;
-    p.vx *= 0.94; p.vy *= 0.94;
+    const drag = p.g > 0 ? 0.99 : 0.94;
+    p.vx *= drag; p.vy *= drag;
     p.t -= dt;
   }
   world.particles = world.particles.filter(p => p.t > 0);

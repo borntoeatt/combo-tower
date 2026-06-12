@@ -105,6 +105,8 @@ export interface Particle {
   vx: number; vy: number;
   t: number;
   color: string;
+  g: number;     // gravity px/s² — debris arcs, 0 for sparks
+  size: number;
 }
 
 export interface Smoke {

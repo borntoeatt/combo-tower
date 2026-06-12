@@ -1,6 +1,6 @@
 import { actForWave } from "../config/acts";
 import { CELL, FIELD_H, H, W } from "../config/balance";
-import { WP } from "../config/path";
+import { pathLength, pointAtDist, WP } from "../config/path";
 import { TOWER_TYPES } from "../config/towers";
 import { canBuildAt, cellAt, towerAt, towerStats } from "../game/economy";
 import type { Beam } from "../game/types";
@@ -175,8 +175,25 @@ export class Renderer {
     for (const p of world.particles) {
       ctx.globalAlpha = Math.max(0, Math.min(1, p.t * 2.4)) * 0.9;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      const half = p.size / 2;
+      ctx.fillRect(p.x - half, p.y - half, p.size, p.size);
     }
+
+    // energy pulses coursing along the path
+    for (let i = 0; i < 3; i++) {
+      const d = (world.time * 90 + (i * pathLength) / 3) % pathLength;
+      const [px, py] = pointAtDist(d);
+      const fade = Math.min(1, d / 60, (pathLength - d) / 60); // ease in/out at portals
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.shadowColor = emberColor;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = emberColor;
+      ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
 
     for (const em of world.embers) {
       ctx.globalAlpha = 0.25 + Math.sin(em.p * 2) * 0.15;
@@ -257,6 +274,15 @@ export class Renderer {
 
   private drawOverlays(world: World): void {
     const ctx = this.ctx;
+    // a living boss presses red into the field edges
+    if (world.enemies.some(e => e.boss && e.hp > 0)) {
+      const pulse = 0.05 + 0.03 * Math.sin(world.time * 3);
+      const v = ctx.createRadialGradient(W / 2, FIELD_H / 2, FIELD_H * 0.4, W / 2, FIELD_H / 2, W * 0.62);
+      v.addColorStop(0, "rgba(200,30,60,0)");
+      v.addColorStop(1, "rgba(200,30,60," + pulse.toFixed(3) + ")");
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, W, FIELD_H);
+    }
     if (world.damageFlash > 0) {
       const v = ctx.createRadialGradient(W / 2, FIELD_H / 2, FIELD_H * 0.3, W / 2, FIELD_H / 2, W * 0.6);
       v.addColorStop(0, "rgba(255,0,40,0)");
