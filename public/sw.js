@@ -1,7 +1,7 @@
 /* Stale-while-revalidate service worker: serve from cache instantly,
  * refresh the cache in the background. The whole game is ~20 KB
  * gzipped, so after one visit it plays fully offline. */
-const CACHE = "grid-defense-v1";
+const CACHE = "grid-defense-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
